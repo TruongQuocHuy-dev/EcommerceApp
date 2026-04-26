@@ -1,16 +1,17 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../api/client';
 
-interface Category {
+export interface Category {
     _id: string;
     id?: string;
     name: string;
     description?: string;
     image?: string;
     parent?: string | { _id: string; name: string };
+    children?: Category[];
 }
 
-interface CategoryState {
+export interface CategoryState {
     categories: Category[];
     isLoading: boolean;
     error: string | null;

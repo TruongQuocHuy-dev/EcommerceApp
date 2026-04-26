@@ -16,19 +16,13 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, MainTabParamList } from '../../navigation/types';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../../theme';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { fetchCategories } from '../../store/categorySlice';
+import { fetchCategories, Category } from '../../store/categorySlice';
 
 type CategoriesScreenNavigationProp = CompositeNavigationProp<
     NativeStackNavigationProp<RootStackParamList, 'Categories'>,
     BottomTabNavigationProp<MainTabParamList>
 >;
 
-interface CategoryItem {
-    id: string;
-    name: string;
-    image?: string;
-    children?: CategoryItem[];
-}
 
 const CategoriesScreen = () => {
     const navigation = useNavigation<CategoriesScreenNavigationProp>();
@@ -39,15 +33,21 @@ const CategoriesScreen = () => {
         dispatch(fetchCategories());
     }, [dispatch]);
 
-    const handleCategoryPress = (category: CategoryItem) => {
+    const handleCategoryPress = (category: Category) => {
         if (category.children && category.children.length > 0) {
-            navigation.navigate('CategoryDetail', { categoryId: category.id, categoryName: category.name });
+            navigation.navigate('CategoryDetail', { 
+                categoryId: category.id || category._id, 
+                categoryName: category.name 
+            });
         } else {
-            navigation.navigate('ProductList', { categoryId: category.id, categoryName: category.name });
+            navigation.navigate('ProductList', { 
+                categoryId: category.id || category._id, 
+                categoryName: category.name 
+            });
         }
     };
 
-    const renderItem = ({ item }: { item: CategoryItem }) => (
+    const renderItem = ({ item }: { item: Category }) => (
         <TouchableOpacity
             style={styles.categoryItem}
             onPress={() => handleCategoryPress(item)}
@@ -89,7 +89,7 @@ const CategoriesScreen = () => {
 
             <FlatList
                 data={categories}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item) => item.id || item._id}
                 renderItem={renderItem}
                 numColumns={2}
                 contentContainerStyle={styles.listContent}

@@ -16,7 +16,7 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { fetchProducts } from '../../store/productSlice';
+import { fetchProducts, fetchHomeProducts } from '../../store/productSlice';
 import { fetchCategories } from '../../store/categorySlice';
 import { fetchBanners } from '../../store/bannerSlice';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../../theme';
@@ -38,7 +38,7 @@ const HomeScreen = () => {
     const insets = useSafeAreaInsets();
     const dispatch = useAppDispatch();
     const route = useRoute<RouteProp<MainTabParamList, 'Home'>>();
-    const { products, isLoading, pagination } = useAppSelector((state) => state.product);
+    const { homeProducts, isLoading, pagination } = useAppSelector((state) => state.product);
     const { categories, isLoading: isCategoryLoading } = useAppSelector((state) => state.category);
     const { banners, isLoading: isBannerLoading } = useAppSelector((state) => state.banners);
     const { user } = useAppSelector((state) => state.auth);
@@ -48,7 +48,7 @@ const HomeScreen = () => {
         if (route.params?.categoryId) {
             params.category = route.params.categoryId;
         }
-        dispatch(fetchProducts(params));
+        dispatch(fetchHomeProducts(params));
     }, [dispatch, route.params]);
 
     const loadData = useCallback(() => {
@@ -158,9 +158,9 @@ const HomeScreen = () => {
         </View>
     );
 
-    const feedData = isLoading && products.length === 0
+    const feedData = isLoading && homeProducts.length === 0
         ? Array.from({ length: 6 }).map((_, i) => ({ id: `skeleton-${i}`, isSkeleton: true }))
-        : products;
+        : homeProducts;
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>

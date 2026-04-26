@@ -3,6 +3,7 @@ import api from '../api/client';
 
 interface ProductState {
   products: any[];
+  homeProducts: any[];
   currentProduct: any | null;
   searchResults: any[];
   pagination: any | null;
@@ -12,6 +13,7 @@ interface ProductState {
 
 const initialState: ProductState = {
   products: [],
+  homeProducts: [],
   currentProduct: null,
   searchResults: [],
   pagination: null,
@@ -24,14 +26,24 @@ export const fetchProducts = createAsyncThunk(
   'product/fetchProducts',
   async (params: any = {}, { rejectWithValue }) => {
     try {
-      console.log('fetchProducts: starting', params);
       const queryString = new URLSearchParams(params).toString();
       const response = await api.get(`/products?${queryString}`);
-      console.log('fetchProducts: success', response.data.data.products?.length);
       return response.data.data;
     } catch (error: any) {
-      console.error('fetchProducts: error', error);
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch products');
+    }
+  }
+);
+
+export const fetchHomeProducts = createAsyncThunk(
+  'product/fetchHomeProducts',
+  async (params: any = {}, { rejectWithValue }) => {
+    try {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await api.get(`/products?${queryString}`);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch home products');
     }
   }
 );
@@ -125,6 +137,24 @@ const productSlice = createSlice({
         state.pagination = action.payload?.pagination || null;
       })
       .addCase(fetchProducts.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      // Fetch Home Products
+      .addCase(fetchHomeProducts.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchHomeProducts.fulfilled, (state, action) => {
+        state.isLoading = false;
+        if (action.meta.arg.page > 1) {
+          state.homeProducts = [...state.homeProducts, ...(action.payload?.products || [])];
+        } else {
+          state.homeProducts = action.payload?.products || [];
+        }
+        state.pagination = action.payload?.pagination || null;
+      })
+      .addCase(fetchHomeProducts.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       })
