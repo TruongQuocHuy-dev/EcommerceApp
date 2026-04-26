@@ -1,6 +1,7 @@
+import { API_BASE_URL as ENV_API_BASE_URL } from '@env';
+
 // API Configuration
-export const API_BASE_URL: string = 'http://192.168.1.7:3000/api/v1'; // Local IP for physical device/emulator
-// export const API_BASE_URL: string = 'http://localhost:3000/api/v1'; // iOS simulator
+export const API_BASE_URL: string = ENV_API_BASE_URL || 'http://192.168.1.7:3000/api/v1'; // Local IP for physical device/emulator
 
 // App Configuration
 export const APP_NAME: string = 'E-Commerce App';

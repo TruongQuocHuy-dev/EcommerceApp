@@ -1,97 +1,151 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# 📱 Electro Mobile App
 
-# Getting Started
+A scalable **React Native mobile application** for the Electro E-commerce platform, supporting both **users** and **sellers** with a complete shopping experience.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+---
 
-## Step 1: Start Metro
+## 📌 Overview
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+This mobile app is part of a full-stack e-commerce system, allowing:
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+### 👤 Users
 
-```sh
-# Using npm
-npm start
+* Browse and search products
+* Add to cart and checkout
+* Track orders
+* Manage profile and addresses
 
-# OR using Yarn
-yarn start
+### 🧑‍💼 Sellers
+
+* Create and manage products
+* Track and update orders
+
+---
+
+## 🛠 Tech Stack
+
+| Layer      | Technology                    |
+| ---------- | ----------------------------- |
+| Framework  | React Native CLI              |
+| Navigation | React Navigation              |
+| State      | Context API / Redux           |
+| API        | RESTful API                   |
+| Auth       | Firebase Authentication / JWT |
+
+---
+
+## ✨ Key Features
+
+### 🛍 Shopping Experience
+
+* Product listing & detail view
+* Search and filtering
+
+### 🛒 Cart & Orders
+
+* Add to cart
+* Checkout flow
+* Order tracking
+
+### 👤 User Profile
+
+* Profile management
+* Address management
+
+### 🧑‍💼 Seller Features
+
+* Product CRUD
+* Order management
+
+---
+
+## 🌐 API Integration
+
+The app connects to the backend API:
+
+```bash
+https://your-backend.onrender.com/api/v1
 ```
 
-## Step 2: Build and run your app
+---
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+## ⚙️ Installation
 
-### Android
-
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
+```bash
+git clone https://github.com/TruongQuocHuy-dev/ecommerce-mobile.git
+cd ecommerce-mobile
+npm install
 ```
 
-### iOS
+---
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+## ▶️ Running the App
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+### . Run on Android
 
-```sh
-bundle install
+```bash
+npx react-native run-android
 ```
 
-Then, and every time you update your native dependencies, run:
 
-```sh
-bundle exec pod install
+---
+
+## 📁 Project Structure
+
+```bash
+src/
+├── features/        # Business logic modules
+├── components/      # Reusable UI components
+├── navigation/      # Navigation setup
+├── services/        # API calls
+├── hooks/           # Custom hooks
+├── utils/           # Helper functions
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+---
 
-```sh
-# Using npm
-npm run ios
+## 🔐 Environment Variables
 
-# OR using Yarn
-yarn ios
+Create a `.env` file:
+
+```env
+API_URL=https://your-backend.onrender.com
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+---
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+## 📦 Build APK (Android)
 
-## Step 3: Modify your app
+```bash
+cd android
+./gradlew assembleRelease
+```
 
-Now that you have successfully run the app, let's make changes!
+---
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+## 🧩 Related Projects
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+* Backend: https://github.com/TruongQuocHuy-dev/ecommerce-backend
+* Admin Dashboard: https://github.com/TruongQuocHuy-dev/ecommerce-admin
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+---
 
-## Congratulations! :tada:
+## 🚀 Future Improvements
 
-You've successfully run and modified your React Native App. :partying_face:
+* Push notifications
+* Payment integration
+* Real-time chat
+* Performance optimization
 
-### Now what?
+---
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+## 👤 Author
 
-# Troubleshooting
+* GitHub: https://github.com/TruongQuocHuy-dev
+* Email: [tqhuy.dev.frontend@gmail.com](mailto:tqhuy.dev.frontend@gmail.com)
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+---
 
-# Learn More
+## ⭐️ Support
 
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+If you find this project helpful, feel free to give it a ⭐️
