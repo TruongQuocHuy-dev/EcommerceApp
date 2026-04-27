@@ -12,6 +12,7 @@ import { launchImageLibrary, Asset } from 'react-native-image-picker';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { createProduct, updateProduct, fetchProductById } from '../../store/productSlice';
 import { fetchCategories } from '../../store/categorySlice';
+import api from '../../api/client';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 
@@ -27,8 +28,15 @@ const AddEditProductScreen = () => {
     const { isLoading, currentProduct } = useAppSelector((state) => state.product);
     const { categories, isLoading: isCategoriesLoading } = useAppSelector((state) => state.category);
 
-    const [activeTab, setActiveTab] = useState<'general' | 'variants'>('general');
+    const [activeTab, setActiveTab] = useState<'general' | 'variants' | 'seo'>('general');
     const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
+    const [isBrandModalVisible, setBrandModalVisible] = useState(false);
+    const [isSupplierModalVisible, setSupplierModalVisible] = useState(false);
+
+    const [brands, setBrands] = useState<any[]>([]);
+    const [suppliers, setSuppliers] = useState<any[]>([]);
+    const [isBrandsLoading, setIsBrandsLoading] = useState(false);
+    const [isSuppliersLoading, setIsSuppliersLoading] = useState(false);
 
     const [form, setForm] = useState({
         name: '',
@@ -37,6 +45,13 @@ const AddEditProductScreen = () => {
         stock: '',
         category: '',
         categoryName: '',
+        brand: '',
+        brandName: '',
+        supplier: '',
+        supplierName: '',
+        metaTitle: '',
+        metaDescription: '',
+        metaKeywords: '',
         isFeatured: false,
     });
 
@@ -101,6 +116,31 @@ const AddEditProductScreen = () => {
     // Fetch initial data
     useEffect(() => {
         dispatch(fetchCategories());
+        
+        const fetchBrandsAndSuppliers = async () => {
+            try {
+                setIsBrandsLoading(true);
+                const brandRes = await api.get('/brands');
+                setBrands(brandRes.data.data);
+            } catch (error) {
+                console.error('Failed to fetch brands', error);
+            } finally {
+                setIsBrandsLoading(false);
+            }
+
+            try {
+                setIsSuppliersLoading(true);
+                const supplierRes = await api.get('/suppliers');
+                setSuppliers(supplierRes.data.data);
+            } catch (error) {
+                console.error('Failed to fetch suppliers', error);
+            } finally {
+                setIsSuppliersLoading(false);
+            }
+        };
+
+        fetchBrandsAndSuppliers();
+
         if (isEdit && productId) {
             dispatch(fetchProductById(productId));
         }
@@ -110,7 +150,13 @@ const AddEditProductScreen = () => {
     useEffect(() => {
         if (isEdit && currentProduct && currentProduct.id === productId) {
             const catId = typeof currentProduct.category === 'object' ? (currentProduct.category?._id || currentProduct.category?.id) : currentProduct.category;
-            const catName = categories.find((c: any) => c._id === catId || c.id === catId)?.name || '';
+            const catName = categories.find((c: any) => (c._id || c.id) === catId)?.name || '';
+
+            const brandId = typeof currentProduct.brand === 'object' ? (currentProduct.brand?._id || currentProduct.brand?.id) : currentProduct.brand;
+            const brandName = brands.find((b: any) => (b._id || b.id) === brandId)?.name || '';
+
+            const supplierId = typeof currentProduct.supplier === 'object' ? (currentProduct.supplier?._id || currentProduct.supplier?.id) : currentProduct.supplier;
+            const supplierName = suppliers.find((s: any) => (s._id || s.id) === supplierId)?.name || '';
 
             setForm({
                 name: currentProduct.name || '',
@@ -119,13 +165,20 @@ const AddEditProductScreen = () => {
                 stock: currentProduct.stock?.toString() || '',
                 category: catId || '',
                 categoryName: catName || 'Select Category',
+                brand: brandId || '',
+                brandName: brandName || 'Select Brand',
+                supplier: supplierId || '',
+                supplierName: supplierName || 'Select Supplier',
+                metaTitle: currentProduct.metaTitle || '',
+                metaDescription: currentProduct.metaDescription || '',
+                metaKeywords: currentProduct.metaKeywords || '',
                 isFeatured: currentProduct.isFeatured || false,
             });
             setExistingImages(currentProduct.images || []);
             setTierVariations(currentProduct.tierVariations || []);
             setSkus(currentProduct.skus || []);
         }
-    }, [isEdit, currentProduct, productId, categories]);
+    }, [isEdit, currentProduct, productId, categories, brands, suppliers]);
 
     const handleChange = (key: string, value: string) => {
         setForm(prev => ({ ...prev, [key]: value }));
@@ -134,6 +187,16 @@ const AddEditProductScreen = () => {
     const handleSelectCategory = (cat: any) => {
         setForm(prev => ({ ...prev, category: cat._id || cat.id, categoryName: cat.name }));
         setCategoryModalVisible(false);
+    };
+
+    const handleSelectBrand = (brand: any) => {
+        setForm(prev => ({ ...prev, brand: brand._id || brand.id, brandName: brand.name }));
+        setBrandModalVisible(false);
+    };
+
+    const handleSelectSupplier = (supplier: any) => {
+        setForm(prev => ({ ...prev, supplier: supplier._id || supplier.id, supplierName: supplier.name }));
+        setSupplierModalVisible(false);
     };
 
     const handlePickImage = async () => {
@@ -191,6 +254,11 @@ const AddEditProductScreen = () => {
         formData.append('price', form.price);
         formData.append('stock', form.stock);
         formData.append('category', form.category);
+        formData.append('brand', form.brand || '');
+        formData.append('supplier', form.supplier || '');
+        formData.append('metaTitle', form.metaTitle || '');
+        formData.append('metaDescription', form.metaDescription || '');
+        formData.append('metaKeywords', form.metaKeywords || '');
         formData.append('isFeatured', String(form.isFeatured));
 
         // Clean up UI-only properties from skus before stringifying
@@ -275,6 +343,13 @@ const AddEditProductScreen = () => {
                     <Icon name="tag-multiple" size={20} color={activeTab === 'variants' ? COLORS.primary : COLORS.text.secondary} />
                     <Text style={[styles.tabText, activeTab === 'variants' && styles.activeTabText]}>Variants</Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.tabButton, activeTab === 'seo' && styles.activeTabButton]}
+                    onPress={() => setActiveTab('seo')}
+                >
+                    <Icon name="search-web" size={20} color={activeTab === 'seo' ? COLORS.primary : COLORS.text.secondary} />
+                    <Text style={[styles.tabText, activeTab === 'seo' && styles.activeTabText]}>SEO</Text>
+                </TouchableOpacity>
             </View>
 
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
@@ -306,12 +381,16 @@ const AddEditProductScreen = () => {
                                 <View style={[styles.formGroup, { flex: 1, marginLeft: SPACING.xs }]}>
                                     <Text style={styles.label}>Stock *</Text>
                                     <TextInput
-                                        style={styles.input}
+                                        style={[styles.input, skus.length > 0 && { backgroundColor: COLORS.divider, color: COLORS.text.muted }]}
                                         value={form.stock}
                                         onChangeText={(text) => handleChange('stock', text)}
                                         placeholder="0"
                                         keyboardType="number-pad"
+                                        editable={skus.length === 0}
                                     />
+                                    {skus.length > 0 && (
+                                        <Text style={[styles.helperText, { color: COLORS.secondary }]}>Managed by variants</Text>
+                                    )}
                                 </View>
                             </View>
 
@@ -326,6 +405,33 @@ const AddEditProductScreen = () => {
                                     </Text>
                                     <Icon name="chevron-down" size={20} color={COLORS.text.secondary} />
                                 </TouchableOpacity>
+                            </View>
+
+                            <View style={styles.row}>
+                                <View style={[styles.formGroup, { flex: 1, marginRight: SPACING.xs }]}>
+                                    <Text style={styles.label}>Brand</Text>
+                                    <TouchableOpacity
+                                        style={styles.dropdownButton}
+                                        onPress={() => setBrandModalVisible(true)}
+                                    >
+                                        <Text style={form.brandName ? styles.dropdownText : styles.dropdownPlaceholder} numberOfLines={1}>
+                                            {form.brandName || 'Select Brand'}
+                                        </Text>
+                                        <Icon name="chevron-down" size={20} color={COLORS.text.secondary} />
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={[styles.formGroup, { flex: 1, marginLeft: SPACING.xs }]}>
+                                    <Text style={styles.label}>Supplier</Text>
+                                    <TouchableOpacity
+                                        style={styles.dropdownButton}
+                                        onPress={() => setSupplierModalVisible(true)}
+                                    >
+                                        <Text style={form.supplierName ? styles.dropdownText : styles.dropdownPlaceholder} numberOfLines={1}>
+                                            {form.supplierName || 'Select Supplier'}
+                                        </Text>
+                                        <Icon name="chevron-down" size={20} color={COLORS.text.secondary} />
+                                    </TouchableOpacity>
+                                </View>
                             </View>
 
                             <View style={[styles.formGroup, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
@@ -523,6 +629,44 @@ const AddEditProductScreen = () => {
                         </View>
                     )}
 
+                    {activeTab === 'seo' && (
+                        <View style={styles.section}>
+                            <View style={styles.formGroup}>
+                                <Text style={styles.label}>Meta Title</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={form.metaTitle}
+                                    onChangeText={(text) => handleChange('metaTitle', text)}
+                                    placeholder="SEO Title"
+                                />
+                                <Text style={styles.helperText}>Recommended: 50-60 characters</Text>
+                            </View>
+
+                            <View style={styles.formGroup}>
+                                <Text style={styles.label}>Meta Description</Text>
+                                <TextInput
+                                    style={[styles.input, styles.textArea, { height: 100 }]}
+                                    value={form.metaDescription}
+                                    onChangeText={(text) => handleChange('metaDescription', text)}
+                                    placeholder="Brief summary for search results"
+                                    multiline
+                                />
+                                <Text style={styles.helperText}>Recommended: 150-160 characters</Text>
+                            </View>
+
+                            <View style={styles.formGroup}>
+                                <Text style={styles.label}>Meta Keywords</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={form.metaKeywords}
+                                    onChangeText={(text) => handleChange('metaKeywords', text)}
+                                    placeholder="keyword1, keyword2, keyword3"
+                                />
+                                <Text style={styles.helperText}>Comma separated list of keywords</Text>
+                            </View>
+                        </View>
+                    )}
+
                 </ScrollView>
             </KeyboardAvoidingView>
 
@@ -563,6 +707,70 @@ const AddEditProductScreen = () => {
                                     <TouchableOpacity style={styles.categoryItem} onPress={() => handleSelectCategory(item)}>
                                         <Text style={styles.categoryName}>{item.name}</Text>
                                     </TouchableOpacity>
+                                )}
+                            />
+                        )}
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Brand selection Modal */}
+            <Modal visible={isBrandModalVisible} animationType="slide" transparent={true}>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Select Brand</Text>
+                            <TouchableOpacity onPress={() => setBrandModalVisible(false)}>
+                                <Icon name="close" size={24} color={COLORS.text.primary} />
+                            </TouchableOpacity>
+                        </View>
+                        {isBrandsLoading ? (
+                            <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 20 }} />
+                        ) : (
+                            <FlatList
+                                data={brands}
+                                keyExtractor={(item: any) => item._id || item.id}
+                                renderItem={({ item }) => (
+                                    <TouchableOpacity style={styles.categoryItem} onPress={() => handleSelectBrand(item)}>
+                                        <Text style={styles.categoryName}>{item.name}</Text>
+                                    </TouchableOpacity>
+                                )}
+                                ListEmptyComponent={() => (
+                                    <View style={styles.emptyContainer}>
+                                        <Text style={styles.emptyText}>No brands found</Text>
+                                    </View>
+                                )}
+                            />
+                        )}
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Supplier selection Modal */}
+            <Modal visible={isSupplierModalVisible} animationType="slide" transparent={true}>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Select Supplier</Text>
+                            <TouchableOpacity onPress={() => setSupplierModalVisible(false)}>
+                                <Icon name="close" size={24} color={COLORS.text.primary} />
+                            </TouchableOpacity>
+                        </View>
+                        {isSuppliersLoading ? (
+                            <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 20 }} />
+                        ) : (
+                            <FlatList
+                                data={suppliers}
+                                keyExtractor={(item: any) => item._id || item.id}
+                                renderItem={({ item }) => (
+                                    <TouchableOpacity style={styles.categoryItem} onPress={() => handleSelectSupplier(item)}>
+                                        <Text style={styles.categoryName}>{item.name}</Text>
+                                    </TouchableOpacity>
+                                )}
+                                ListEmptyComponent={() => (
+                                    <View style={styles.emptyContainer}>
+                                        <Text style={styles.emptyText}>No suppliers found</Text>
+                                    </View>
                                 )}
                             />
                         )}
@@ -913,6 +1121,19 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
         resizeMode: 'cover',
+    },
+    helperText: {
+        fontSize: FONT_SIZE.xs,
+        color: COLORS.text.secondary,
+        marginTop: 2,
+    },
+    emptyContainer: {
+        padding: SPACING.xl,
+        alignItems: 'center',
+    },
+    emptyText: {
+        fontSize: FONT_SIZE.md,
+        color: COLORS.text.secondary,
     },
 });
 
