@@ -121,7 +121,7 @@ const AddEditProductScreen = () => {
             try {
                 setIsBrandsLoading(true);
                 const brandRes = await api.get('/brands');
-                setBrands(brandRes.data.data);
+                setBrands(brandRes.data.data?.brands || []);
             } catch (error) {
                 console.error('Failed to fetch brands', error);
             } finally {
@@ -131,7 +131,7 @@ const AddEditProductScreen = () => {
             try {
                 setIsSuppliersLoading(true);
                 const supplierRes = await api.get('/suppliers');
-                setSuppliers(supplierRes.data.data);
+                setSuppliers(supplierRes.data.data?.suppliers || []);
             } catch (error) {
                 console.error('Failed to fetch suppliers', error);
             } finally {
