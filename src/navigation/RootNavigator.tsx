@@ -21,6 +21,7 @@ import DiscountSelectionScreen from '../screens/buyer/DiscountSelectionScreen';
 import OrdersScreen from '../screens/buyer/OrdersScreen';
 import SellerDashboard from '../screens/seller/SellerDashboard';
 import SellerOrdersScreen from '../screens/seller/SellerOrdersScreen';
+import SellerVouchersScreen from '../screens/seller/SellerVouchersScreen';
 import SellerRegistrationScreen from '../screens/profile/SellerRegistrationScreen';
 import ShopDetailScreen from '../screens/buyer/ShopDetailScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
@@ -133,6 +134,11 @@ const RootNavigator = () => {
                             name="SellerOrders"
                             component={SellerOrdersScreen}
                             options={{ headerShown: true, title: 'Đơn bán' }}
+                        />
+                        <Stack.Screen
+                            name="SellerVouchers"
+                            component={SellerVouchersScreen}
+                            options={{ headerShown: false }}
                         />
                         <Stack.Screen
                             name="SellerRegistration"

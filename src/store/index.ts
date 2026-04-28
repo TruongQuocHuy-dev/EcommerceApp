@@ -8,6 +8,7 @@ import reviewReducer from './reviewSlice';
 import shopReducer from './shopSlice';
 import notificationReducer from './notificationSlice';
 import bannerReducer from './bannerSlice';
+import discountReducer from './discountSlice';
 
 const store = configureStore({
   reducer: {
@@ -20,6 +21,7 @@ const store = configureStore({
     shop: shopReducer,
     notification: notificationReducer,
     banners: bannerReducer,
+    discount: discountReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
