@@ -47,7 +47,7 @@ const SellerOrdersScreen = () => {
 
     const loadOrders = useCallback(
         (page = 1) => {
-            const params: any = { page, limit: 15 };
+            const params: any = { page, limit: 15, asSeller: true };
             if (activeTab) params.status = activeTab;
             dispatch(fetchOrders(params));
         },

@@ -105,7 +105,7 @@ export const createOrder = createAsyncThunk(
 export const fetchOrders = createAsyncThunk(
     'order/fetchOrders',
     async (
-        params: { status?: string; page?: number; limit?: number } = {},
+        params: { status?: string; page?: number; limit?: number; asSeller?: boolean } = {},
         { rejectWithValue }
     ) => {
         try {
@@ -113,6 +113,7 @@ export const fetchOrders = createAsyncThunk(
             if (params.status) queryParams.append('status', params.status);
             if (params.page) queryParams.append('page', params.page.toString());
             if (params.limit) queryParams.append('limit', params.limit.toString());
+            if (params.asSeller) queryParams.append('asSeller', 'true');
 
             const response = await api.get(`/orders?${queryParams.toString()}`);
             return response.data.data;
