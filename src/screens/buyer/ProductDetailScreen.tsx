@@ -377,68 +377,103 @@ const ProductDetailScreen = () => {
                 </View>
 
                 <View style={styles.contentContainer}>
-                    {/* Category & Rating */}
+                    {/* Top meta: category badge + stats */}
                     <View style={styles.metaRow}>
-                        <Text style={styles.category}>
-                            {product.category?.name || 'Chưa phân loại'}
-                        </Text>
-                        <View style={styles.ratingContainer}>
-                            <Star size={16} color="#FFD700" fill="#FFD700" />
-                            <Text style={styles.ratingText}>
-                                {product.averageRating?.toFixed(1) || '0.0'}
-                                <Text style={styles.reviewCount}> ({product.numReviews} đánh giá)</Text>
-                            </Text>
+                        <View style={styles.categoryBadge}>
+                            <Text style={styles.categoryBadgeText}>{product.category?.name || 'Sản phẩm'}</Text>
                         </View>
-                        <Text style={styles.soldCount}>
-                            Đã bán {product.totalSold || product.sold || 0}
-                        </Text>
+                        <View style={styles.statsRow}>
+                            <View style={styles.statItem}>
+                                <Star size={12} color="#f59e0b" fill="#f59e0b" />
+                                <Text style={styles.statText}>{product.averageRating?.toFixed(1) || '0.0'}</Text>
+                            </View>
+                            <View style={styles.statDivider} />
+                            <Text style={styles.statText}>{product.numReviews} đánh giá</Text>
+                            <View style={styles.statDivider} />
+                            <Text style={styles.statText}>Đã bán {product.totalSold || 0}</Text>
+                        </View>
                     </View>
 
                     {/* Title */}
                     <Text style={styles.title}>{product.name}</Text>
 
-                    {/* Price */}
-                    <View style={styles.priceRow}>
-                        <Text style={styles.price}>{currentPrice.toLocaleString()}đ</Text>
+                    {/* Price card */}
+                    <View style={styles.priceCard}>
+                        <View style={styles.priceRow}>
+                            <Text style={styles.price}>{currentPrice.toLocaleString()}đ</Text>
+                            {!!currentOriginalPrice && currentOriginalPrice > currentPrice && (
+                                <View style={styles.discountBadge}>
+                                    <Text style={styles.discountBadgeText}>
+                                        -{Math.round(((currentOriginalPrice - currentPrice) / currentOriginalPrice) * 100)}%
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
                         {!!currentOriginalPrice && currentOriginalPrice > currentPrice && (
-                            <Text style={styles.originalPrice}>
-                                {currentOriginalPrice.toLocaleString()}đ
-                            </Text>
+                            <Text style={styles.originalPrice}>{currentOriginalPrice.toLocaleString()}đ</Text>
                         )}
-                        {currentStock <= 5 && currentStock > 0 && (
-                            // <Text style={styles.lowStock}>Chỉ còn {currentStock} sản phẩm!</Text>
-                            <Text></Text>
+                        {currentStock === 0 && (
+                            <View style={styles.outOfStockBadge}><Text style={styles.outOfStockText}>Hết hàng</Text></View>
+                        )}
+                        {currentStock > 0 && currentStock <= 5 && (
+                            <Text style={styles.lowStockHint}>⚡ Chỉ còn {currentStock} sản phẩm!</Text>
                         )}
                     </View>
 
-                    {/* Tier Variations and Description */}
+                    {/* Attributes */}
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Chi tiết sản phẩm</Text>
+                        <View style={styles.attributesContainer}>
+                            {[
+                                { label: 'Danh mục', value: product.category?.name },
+                                product.brand ? { label: 'Thương hiệu', value: product.brand.name } : null,
+                                product.supplier ? { label: 'Nhà cung cấp', value: product.supplier.name } : null,
+                            ].filter(Boolean).map((attr: any, i: number, arr: any[]) => (
+                                <View key={attr.label} style={[styles.attributeRow, i < arr.length - 1 && styles.attributeRowBorder]}>
+                                    <Text style={styles.attributeLabel}>{attr.label}</Text>
+                                    <Text style={styles.attributeValue}>{attr.value || '—'}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    </View>
+
+                    {/* Description */}
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Mô tả sản phẩm</Text>
-                        <Text
-                            style={styles.description}
-                            numberOfLines={isDescriptionExpanded ? undefined : 3}
-                        >
+                        <Text style={styles.description} numberOfLines={isDescriptionExpanded ? undefined : 4}>
                             {product.description}
                         </Text>
-                        {product.description && product.description.length > 100 && (
-                            <TouchableOpacity onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}>
-                                <Text style={styles.seeAllText}>
-                                    {isDescriptionExpanded ? 'Thu gọn' : 'Xem thêm'}
-                                </Text>
+                        {product.description && product.description.length > 120 && (
+                            <TouchableOpacity style={styles.expandBtn} onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}>
+                                <Text style={styles.expandBtnText}>{isDescriptionExpanded ? 'Thu gọn ▲' : 'Xem thêm ▼'}</Text>
                             </TouchableOpacity>
                         )}
                     </View>
 
-                    {/* Reviews Preview (Placeholder) */}
+                    {/* Reviews */}
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>Đánh giá</Text>
-                            <TouchableOpacity>
-                                <Text style={styles.seeAllText}>Xem tất cả</Text>
+                            <Text style={styles.sectionTitle}>Đánh giá khách hàng</Text>
+                            <TouchableOpacity onPress={() => navigation.navigate('ProductReviews', { productId: product._id || product.id, productName: product.name })}>
+                                <Text style={styles.seeAllText}>Xem tất cả ›</Text>
                             </TouchableOpacity>
                         </View>
+                        {/* Rating Summary */}
+                        <View style={styles.ratingSummaryCard}>
+                            <View style={styles.ratingBigBox}>
+                                <Text style={styles.ratingBigNumber}>{product.averageRating?.toFixed(1) || '0.0'}</Text>
+                                <View style={styles.ratingStarsRow}>
+                                    {[1,2,3,4,5].map(s => (
+                                        <Star key={s} size={14} color="#f59e0b" fill={s <= Math.round(product.averageRating || 0) ? '#f59e0b' : 'transparent'} />
+                                    ))}
+                                </View>
+                                <Text style={styles.ratingTotalText}>{product.numReviews} đánh giá</Text>
+                            </View>
+                        </View>
                         {product.numReviews === 0 ? (
-                            <Text style={styles.noReviews}>Chưa có đánh giá nào.</Text>
+                            <View style={styles.noReviewBox}>
+                                <Text style={styles.noReviews}>Chưa có đánh giá nào.</Text>
+                            </View>
                         ) : (
                             <View style={styles.reviewsList}>
                                 {isReviewsLoading ? (
@@ -454,46 +489,25 @@ const ProductDetailScreen = () => {
                                                         </Text>
                                                     </View>
                                                     <View>
-                                                        <Text style={styles.reviewerName}>
-                                                            {review.user?.name || 'Người dùng'}
-                                                        </Text>
+                                                        <Text style={styles.reviewerName}>{review.user?.name || 'Người dùng'}</Text>
                                                         <View style={styles.ratingRow}>
                                                             {[...Array(5)].map((_, i) => (
-                                                                <Star
-                                                                    key={i}
-                                                                    size={12}
-                                                                    color={i < review.rating ? '#f59e0b' : COLORS.border}
-                                                                    fill={i < review.rating ? '#f59e0b' : 'transparent'}
-                                                                />
+                                                                <Star key={i} size={11} color={i < review.rating ? '#f59e0b' : COLORS.border} fill={i < review.rating ? '#f59e0b' : 'transparent'} />
                                                             ))}
                                                         </View>
                                                     </View>
                                                 </View>
-                                                <Text style={styles.reviewDate}>
-                                                    {new Date(review.createdAt).toLocaleDateString('vi-VN')}
-                                                </Text>
+                                                <Text style={styles.reviewDate}>{new Date(review.createdAt).toLocaleDateString('vi-VN')}</Text>
                                             </View>
-
                                             {review.isVerifiedPurchase && (
-                                                <View style={styles.verifiedBadge}>
-                                                    <Text style={styles.verifiedText}>Đã mua hàng</Text>
-                                                </View>
+                                                <View style={styles.verifiedBadge}><Text style={styles.verifiedText}>✓ Đã mua hàng</Text></View>
                                             )}
-
                                             <Text style={styles.reviewTitle}>{review.title}</Text>
                                             <Text style={styles.reviewContent}>{review.comment}</Text>
                                         </View>
                                     ))
                                 )}
                             </View>
-                        )}
-                        {reviews.length > 3 && (
-                            <TouchableOpacity
-                                style={{ alignItems: 'center', marginTop: SPACING.md }}
-                                onPress={() => navigation.navigate('ProductReviews', { productId: product._id || product.id, productName: product.name })}
-                            >
-                                <Text style={styles.seeAllText}>Xem tất cả {product.numReviews} đánh giá</Text>
-                            </TouchableOpacity>
                         )}
                     </View>
 
@@ -591,34 +605,30 @@ const ProductDetailScreen = () => {
             </ScrollView>
 
             {/* Bottom Action Bar */}
-            <View style={[styles.mainBottomBar, { paddingBottom: Math.max(insets.bottom, SPACING.lg) }]}>
+            <View style={[styles.mainBottomBar, { paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
                 <TouchableOpacity
                     style={styles.chatStoreBtn}
                     onPress={() => shopInfo && navigation.navigate('ShopDetail', { shopId: shopInfo._id })}
                 >
-                    <Store size={22} color={COLORS.text.secondary} />
+                    <Store size={22} color={COLORS.primary} />
                     <Text style={styles.chatStoreText}>Shop</Text>
                 </TouchableOpacity>
-
+                <View style={styles.bottomDivider} />
                 <View style={styles.actionButtonsContainer}>
                     <TouchableOpacity
                         style={[styles.outlineActionBtn, currentStock === 0 && styles.disabledBtnOutline]}
                         onPress={() => openBottomSheet('cart')}
                         disabled={currentStock === 0}
                     >
-                        <Text style={[styles.outlineActionText, currentStock === 0 && styles.disabledText]}>
-                            Thêm vào giỏ
-                        </Text>
+                        <ShoppingCart size={16} color={currentStock === 0 ? COLORS.text.muted : COLORS.primary} />
+                        <Text style={[styles.outlineActionText, currentStock === 0 && styles.disabledText]}>Giỏ hàng</Text>
                     </TouchableOpacity>
-
                     <TouchableOpacity
                         style={[styles.solidActionBtn, currentStock === 0 && styles.disabledBtn]}
                         onPress={() => openBottomSheet('buy')}
                         disabled={currentStock === 0}
                     >
-                        <Text style={styles.solidActionText}>
-                            Mua ngay
-                        </Text>
+                        <Text style={styles.solidActionText}>{currentStock === 0 ? 'Hết hàng' : 'Mua ngay'}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -791,65 +801,113 @@ const styles = StyleSheet.create({
         width: 20,
     },
     contentContainer: {
-        padding: SPACING.lg,
-        paddingBottom: 100,
+        paddingHorizontal: SPACING.md,
+        paddingTop: SPACING.lg,
+        paddingBottom: 110,
         backgroundColor: COLORS.background,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        marginTop: -24,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        marginTop: -28,
     },
     metaRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: SPACING.md,
+        marginBottom: SPACING.sm,
     },
-    category: {
-        fontSize: FONT_SIZE.sm,
+    categoryBadge: {
+        backgroundColor: COLORS.primary + '18',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: BORDER_RADIUS.full,
+    },
+    categoryBadgeText: {
+        fontSize: FONT_SIZE.xs,
         color: COLORS.primary,
-        fontWeight: '600',
+        fontWeight: '700',
         textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
-    ratingContainer: {
+    statsRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        gap: 6,
     },
-    ratingText: {
-        fontSize: FONT_SIZE.sm,
-        color: COLORS.text.primary,
-        fontWeight: 'bold',
+    statItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
     },
-    reviewCount: {
-        fontWeight: 'normal',
-        color: COLORS.text.muted,
-    },
-    soldCount: {
-        fontSize: FONT_SIZE.sm,
+    statText: {
+        fontSize: FONT_SIZE.xs,
         color: COLORS.text.secondary,
         fontWeight: '500',
     },
+    statDivider: {
+        width: 1,
+        height: 10,
+        backgroundColor: COLORS.border,
+    },
     title: {
         fontSize: FONT_SIZE.xl,
-        fontWeight: 'bold',
+        fontWeight: '800',
         color: COLORS.text.primary,
-        marginBottom: SPACING.sm,
+        lineHeight: 26,
+        marginBottom: SPACING.md,
+    },
+    priceCard: {
+        backgroundColor: '#fff7ed',
+        borderRadius: BORDER_RADIUS.lg,
+        padding: SPACING.md,
+        marginBottom: SPACING.md,
+        borderLeftWidth: 3,
+        borderLeftColor: COLORS.secondary,
     },
     priceRow: {
         flexDirection: 'row',
-        alignItems: 'baseline',
-        gap: 12,
-        marginBottom: SPACING.lg,
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 2,
     },
     price: {
-        fontSize: FONT_SIZE.xxl,
-        fontWeight: 'bold',
-        color: COLORS.primary,
+        fontSize: 26,
+        fontWeight: '800',
+        color: '#ea580c',
+    },
+    discountBadge: {
+        backgroundColor: '#ea580c',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: BORDER_RADIUS.md,
+    },
+    discountBadgeText: {
+        color: '#fff',
+        fontSize: FONT_SIZE.xs,
+        fontWeight: '800',
     },
     originalPrice: {
-        fontSize: FONT_SIZE.md,
+        fontSize: FONT_SIZE.sm,
         color: COLORS.text.muted,
         textDecorationLine: 'line-through',
+    },
+    outOfStockBadge: {
+        alignSelf: 'flex-start',
+        marginTop: 6,
+        backgroundColor: '#fee2e2',
+        paddingHorizontal: 10,
+        paddingVertical: 3,
+        borderRadius: BORDER_RADIUS.full,
+    },
+    outOfStockText: {
+        fontSize: FONT_SIZE.xs,
+        color: COLORS.error,
+        fontWeight: '700',
+    },
+    lowStockHint: {
+        fontSize: FONT_SIZE.xs,
+        color: '#ea580c',
+        fontWeight: '600',
+        marginTop: 4,
     },
     lowStock: {
         fontSize: FONT_SIZE.sm,
@@ -857,7 +915,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     section: {
-        marginBottom: SPACING.lg,
+        marginBottom: SPACING.md,
     },
     sectionHeader: {
         flexDirection: 'row',
@@ -867,11 +925,51 @@ const styles = StyleSheet.create({
     },
     sectionTitle: {
         fontSize: FONT_SIZE.md,
-        fontWeight: 'bold',
+        fontWeight: '700',
         color: COLORS.text.primary,
         marginBottom: SPACING.sm,
     },
     seeAllText: {
+        fontSize: FONT_SIZE.sm,
+        color: COLORS.primary,
+        fontWeight: '600',
+    },
+    attributesContainer: {
+        backgroundColor: COLORS.surface,
+        borderRadius: BORDER_RADIUS.lg,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        overflow: 'hidden',
+    },
+    attributeRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: SPACING.md,
+        paddingVertical: 12,
+    },
+    attributeRowBorder: {
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.divider,
+    },
+    attributeLabel: {
+        fontSize: FONT_SIZE.sm,
+        color: COLORS.text.secondary,
+        flex: 1,
+    },
+    attributeValue: {
+        fontSize: FONT_SIZE.sm,
+        color: COLORS.text.primary,
+        fontWeight: '600',
+        flex: 2,
+        textAlign: 'right',
+    },
+    expandBtn: {
+        marginTop: SPACING.sm,
+        alignItems: 'center',
+        paddingVertical: SPACING.xs,
+    },
+    expandBtnText: {
         fontSize: FONT_SIZE.sm,
         color: COLORS.primary,
         fontWeight: '600',
@@ -902,6 +1000,44 @@ const styles = StyleSheet.create({
     optionTextActive: {
         color: COLORS.primary,
         fontWeight: 'bold',
+    },
+    ratingSummaryCard: {
+        backgroundColor: COLORS.surface,
+        borderRadius: BORDER_RADIUS.lg,
+        padding: SPACING.md,
+        marginBottom: SPACING.md,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    ratingBigBox: {
+        alignItems: 'center',
+        paddingRight: SPACING.lg,
+    },
+    ratingBigNumber: {
+        fontSize: 40,
+        fontWeight: '800',
+        color: '#f59e0b',
+        lineHeight: 44,
+    },
+    ratingStarsRow: {
+        flexDirection: 'row',
+        gap: 2,
+        marginTop: 4,
+    },
+    ratingTotalText: {
+        fontSize: FONT_SIZE.xs,
+        color: COLORS.text.muted,
+        marginTop: 4,
+    },
+    noReviewBox: {
+        padding: SPACING.lg,
+        alignItems: 'center',
+        backgroundColor: COLORS.surface,
+        borderRadius: BORDER_RADIUS.lg,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
     noReviews: {
         fontSize: FONT_SIZE.md,
@@ -1023,22 +1159,33 @@ const styles = StyleSheet.create({
     mainBottomBar: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: SPACING.lg,
-        paddingTop: SPACING.md,
-        paddingBottom: SPACING.md,
+        paddingHorizontal: SPACING.md,
+        paddingTop: SPACING.sm,
         borderTopWidth: 1,
         borderTopColor: COLORS.border,
-        backgroundColor: COLORS.background,
-        elevation: 10,
+        backgroundColor: COLORS.surface,
+        elevation: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -3 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
     },
     chatStoreBtn: {
         alignItems: 'center',
-        marginRight: SPACING.lg,
+        paddingRight: SPACING.sm,
+        paddingVertical: SPACING.xs,
     },
     chatStoreText: {
         fontSize: 10,
-        color: COLORS.text.secondary,
+        color: COLORS.primary,
         marginTop: 2,
+        fontWeight: '600',
+    },
+    bottomDivider: {
+        width: 1,
+        height: 36,
+        backgroundColor: COLORS.border,
+        marginHorizontal: SPACING.sm,
     },
     actionButtonsContainer: {
         flex: 1,
@@ -1047,33 +1194,35 @@ const styles = StyleSheet.create({
     },
     outlineActionBtn: {
         flex: 1,
-        borderWidth: 1,
-        borderColor: COLORS.primary,
-        borderRadius: BORDER_RADIUS.md,
-        paddingVertical: 14,
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
+        gap: 6,
+        borderWidth: 1.5,
+        borderColor: COLORS.primary,
+        borderRadius: BORDER_RADIUS.lg,
+        paddingVertical: 13,
     },
     solidActionBtn: {
-        flex: 1,
+        flex: 1.4,
         backgroundColor: COLORS.primary,
-        borderRadius: BORDER_RADIUS.md,
-        paddingVertical: 14,
+        borderRadius: BORDER_RADIUS.lg,
+        paddingVertical: 13,
         alignItems: 'center',
         justifyContent: 'center',
     },
     disabledBtnOutline: {
-        borderColor: COLORS.text.muted,
+        borderColor: COLORS.border,
     },
     outlineActionText: {
         color: COLORS.primary,
-        fontSize: FONT_SIZE.md,
-        fontWeight: 'bold',
+        fontSize: FONT_SIZE.sm,
+        fontWeight: '700',
     },
     solidActionText: {
-        color: COLORS.text.inverse,
-        fontSize: FONT_SIZE.md,
-        fontWeight: 'bold',
+        color: '#fff',
+        fontSize: FONT_SIZE.sm,
+        fontWeight: '800',
     },
     disabledText: {
         color: COLORS.text.muted,
