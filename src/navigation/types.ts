@@ -12,9 +12,16 @@ export type MainTabParamList = {
     Profile: undefined;
 };
 
+export type SellerTabParamList = {
+    SellerDashboardTab: undefined;
+    SellerOrdersTab: undefined;
+    SellerVouchersTab: undefined;
+    SellerProfileTab: undefined;
+};
+
 export type RootStackParamList = {
     Auth: NavigatorScreenParams<AuthStackParamList>;
-    Main: NavigatorScreenParams<MainTabParamList>;
+    Main: NavigatorScreenParams<MainTabParamList> | NavigatorScreenParams<SellerTabParamList>;
     ProductList: { categoryId: string; categoryName: string };
     CategoryDetail: { categoryId: string; categoryName: string };
     ProductDetail: { productId: string };

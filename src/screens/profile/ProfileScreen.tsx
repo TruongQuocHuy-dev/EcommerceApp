@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { logout } from '../../store/authSlice';
+import { logout, setAppMode } from '../../store/authSlice';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../../theme';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -40,7 +40,7 @@ const ProfileScreen = () => {
     const dispatch = useAppDispatch();
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<NavigationProp>();
-    const { user } = useAppSelector((state) => state.auth);
+    const { user, appMode } = useAppSelector((state) => state.auth);
 
     const handleLogout = () => {
         dispatch(logout());
@@ -83,11 +83,19 @@ const ProfileScreen = () => {
                     )}
                     {(user?.role === 'seller' || user?.role === 'admin') && (
                         <>
-                            <MenuItem
-                                icon="view-dashboard-outline"
-                                label="Kênh Người Bán"
-                                onPress={() => navigation.navigate('SellerDashboard')}
-                            />
+                            {appMode === 'buyer' ? (
+                                <MenuItem
+                                    icon="view-dashboard-outline"
+                                    label="Kênh Người Bán"
+                                    onPress={() => dispatch(setAppMode('seller'))}
+                                />
+                            ) : (
+                                <MenuItem
+                                    icon="shopping-outline"
+                                    label="Kênh Người Mua"
+                                    onPress={() => dispatch(setAppMode('buyer'))}
+                                />
+                            )}
                             <MenuItem
                                 icon="store-edit-outline"
                                 label="Sửa thông tin Cửa hàng"

@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import AuthNavigator from './AuthNavigator';
 import MainTabNavigator from './MainTabNavigator';
+import SellerTabNavigator from './SellerTabNavigator';
 import ProductDetailScreen from '../screens/buyer/ProductDetailScreen';
 import ProductReviewsScreen from '../screens/buyer/ProductReviewsScreen';
 import ProductListScreen from '../screens/buyer/ProductListScreen';
@@ -35,8 +36,8 @@ import SplashScreen from '../components/SplashScreen';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const RootNavigator = () => {
-    const { isAuthenticated, isLoading } = useAppSelector((state) => state.auth);
-    console.log('RootNavigator: render', { isAuthenticated, isLoading });
+    const { isAuthenticated, isLoading, appMode } = useAppSelector((state) => state.auth);
+    console.log('RootNavigator: render', { isAuthenticated, isLoading, appMode });
 
     if (isLoading) {
         return <SplashScreen />;
@@ -49,7 +50,7 @@ const RootNavigator = () => {
                     <Stack.Screen name="Auth" component={AuthNavigator} />
                 ) : (
                     <>
-                        <Stack.Screen name="Main" component={MainTabNavigator} />
+                        <Stack.Screen name="Main" component={appMode === 'seller' ? SellerTabNavigator : MainTabNavigator} />
                         <Stack.Screen
                             name="ProductList"
                             component={ProductListScreen}

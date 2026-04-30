@@ -296,9 +296,11 @@ const SellerVouchersScreen = () => {
         <SafeAreaView style={styles.container} edges={['top']}>
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <Icon name="arrow-left" size={24} color={COLORS.text.primary} />
-                </TouchableOpacity>
+                {navigation.canGoBack() && (
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <Icon name="arrow-left" size={24} color={COLORS.text.primary} />
+                    </TouchableOpacity>
+                )}
                 <View>
                     <Text style={styles.headerTitle}>Voucher của tôi</Text>
                     <Text style={styles.headerSub}>{vouchers.length} voucher</Text>

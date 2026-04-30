@@ -8,6 +8,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: any | null;
+  appMode: 'buyer' | 'seller';
 }
 
 const initialState: AuthState = {
@@ -15,6 +16,7 @@ const initialState: AuthState = {
   isAuthenticated: false,
   isLoading: true,
   error: null,
+  appMode: 'buyer',
 };
 
 // Async thunks
@@ -124,6 +126,9 @@ const authSlice = createSlice({
     updateUser: (state, action) => {
       state.user = { ...state.user, ...action.payload };
     },
+    setAppMode: (state, action) => {
+      state.appMode = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -137,6 +142,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.isAuthenticated = true;
         state.user = action.payload;
+        state.appMode = 'buyer'; // Đảm bảo luôn vào mode mua hàng khi vừa login
       })
       .addCase(login.rejected, (state, action) => {
         console.log('authSlice: login.rejected triggered', action.error);
@@ -160,6 +166,7 @@ const authSlice = createSlice({
         state.user = null;
         state.isAuthenticated = false;
         state.isLoading = false;
+        state.appMode = 'buyer'; // Reset lại mode khi đăng xuất
       })
       // Update Profile
       .addCase(updateProfile.pending, (state) => {
@@ -181,6 +188,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.user = action.payload;
         state.isAuthenticated = !!action.payload;
+        state.appMode = 'buyer'; // Đảm bảo luôn bắt đầu ở chế độ mua hàng khi load app
       })
       .addCase(checkAuth.rejected, (state) => {
         state.isLoading = false;
@@ -189,5 +197,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, updateUser } = authSlice.actions;
+export const { clearError, updateUser, setAppMode } = authSlice.actions;
 export default authSlice.reducer;

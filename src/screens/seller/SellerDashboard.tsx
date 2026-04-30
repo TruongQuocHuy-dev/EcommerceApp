@@ -412,14 +412,14 @@ const SellerDashboard = () => {
                         <View style={styles.quickActions}>
                             <TouchableOpacity
                                 style={styles.quickBtn}
-                                onPress={() => navigation.navigate('SellerOrders')}
+                                onPress={() => navigation.navigate('SellerOrdersTab' as never)}
                             >
                                 <Icon name="clipboard-list-outline" size={18} color={COLORS.primary} />
                                 <Text style={styles.quickBtnText}>Đơn hàng</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.quickBtn, { marginTop: 6 }]}
-                                onPress={() => navigation.navigate('SellerVouchers')}
+                                onPress={() => navigation.navigate('SellerVouchersTab' as never)}
                             >
                                 <Icon name="ticket-percent-outline" size={18} color='#8b5cf6' />
                                 <Text style={[styles.quickBtnText, { color: '#8b5cf6' }]}>Voucher</Text>
