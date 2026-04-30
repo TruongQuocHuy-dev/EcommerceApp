@@ -3,12 +3,12 @@ import {
     View,
     Text,
     StyleSheet,
-    SafeAreaView,
-    FlatList,
     TouchableOpacity,
+    FlatList,
     RefreshControl,
     ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -40,6 +40,7 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; label: string; 
 const SellerOrdersScreen = () => {
     const navigation = useNavigation<SellerOrdersNavigationProp>();
     const dispatch = useAppDispatch();
+    const insets = useSafeAreaInsets();
     const { orders, pagination, isLoading } = useAppSelector((state) => state.order);
 
     const [activeTab, setActiveTab] = useState('');
@@ -153,8 +154,8 @@ const SellerOrdersScreen = () => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
+        <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+            <View style={[styles.header, { paddingTop: insets.top }]}>
                 <View>
                     <Text style={styles.title}>Quản lý đơn hàng</Text>
                     <Text style={styles.subtitle}>
@@ -164,42 +165,44 @@ const SellerOrdersScreen = () => {
             </View>
 
             {/* Status Tabs */}
-            <FlatList
-                horizontal
-                data={STATUS_TABS}
-                keyExtractor={(item) => item.key}
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.tabsContainer}
-                renderItem={({ item }) => (
-                    <TouchableOpacity
-                        style={[
-                            styles.tab,
-                            activeTab === item.key && styles.tabActive,
-                        ]}
-                        onPress={() => setActiveTab(item.key)}
-                        activeOpacity={0.7}
-                    >
-                        <Icon
-                            name={item.icon}
-                            size={14}
-                            color={activeTab === item.key ? COLORS.text.inverse : COLORS.text.secondary}
-                        />
-                        <Text
+            <View style={styles.tabsWrapper}>
+                <FlatList
+                    horizontal
+                    data={STATUS_TABS}
+                    keyExtractor={(item: any) => item.key}
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.tabsContainer}
+                    renderItem={({ item }: { item: any }) => (
+                        <TouchableOpacity
                             style={[
-                                styles.tabText,
-                                activeTab === item.key && styles.tabTextActive,
+                                styles.tab,
+                                activeTab === item.key && styles.tabActive,
                             ]}
+                            onPress={() => setActiveTab(item.key)}
+                            activeOpacity={0.7}
                         >
-                            {item.label}
-                        </Text>
-                    </TouchableOpacity>
-                )}
-            />
+                            <Icon
+                                name={item.icon}
+                                size={16}
+                                color={activeTab === item.key ? COLORS.text.inverse : COLORS.text.secondary}
+                            />
+                            <Text
+                                style={[
+                                    styles.tabText,
+                                    activeTab === item.key && styles.tabTextActive,
+                                ]}
+                            >
+                                {item.label}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+                />
+            </View>
 
             {/* Orders List */}
             <FlatList
                 data={orders}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item: any) => item.id}
                 renderItem={renderOrderCard}
                 contentContainerStyle={styles.listContent}
                 refreshControl={
@@ -223,7 +226,8 @@ const SellerOrdersScreen = () => {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
     header: {
-        padding: SPACING.md,
+        paddingHorizontal: SPACING.md,
+        paddingBottom: SPACING.md,
         backgroundColor: COLORS.surface,
         borderBottomWidth: 1,
         borderBottomColor: COLORS.border,
@@ -232,17 +236,22 @@ const styles = StyleSheet.create({
     subtitle: { fontSize: FONT_SIZE.sm, color: COLORS.text.muted, marginTop: 2 },
 
     // Tabs
-    tabsContainer: { paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, gap: SPACING.xs },
+    tabsWrapper: {
+        backgroundColor: COLORS.surface,
+        height: 50,
+    },
+    tabsContainer: { paddingHorizontal: SPACING.md, paddingVertical: SPACING.xs, gap: SPACING.sm },
     tab: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: SPACING.md,
-        paddingVertical: SPACING.sm,
+        height: 36,
         borderRadius: BORDER_RADIUS.full,
-        backgroundColor: COLORS.surface,
+        backgroundColor: '#f1f5f9',
         borderWidth: 1,
         borderColor: COLORS.border,
-        gap: 4,
+        gap: 6,
+        alignSelf: 'center',
     },
     tabActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
     tabText: { fontSize: FONT_SIZE.xs, color: COLORS.text.secondary, fontWeight: '500' },

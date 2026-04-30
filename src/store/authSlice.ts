@@ -142,7 +142,11 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.isAuthenticated = true;
         state.user = action.payload;
-        state.appMode = 'buyer'; // Đảm bảo luôn vào mode mua hàng khi vừa login
+        // Kiểm tra role để vào thẳng mode phù hợp
+        const userRole = (action.payload as any)?.role;
+        state.appMode = (userRole === 'seller' || userRole === 'admin') 
+          ? 'seller' 
+          : 'buyer';
       })
       .addCase(login.rejected, (state, action) => {
         console.log('authSlice: login.rejected triggered', action.error);
@@ -188,7 +192,11 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.user = action.payload;
         state.isAuthenticated = !!action.payload;
-        state.appMode = 'buyer'; // Đảm bảo luôn bắt đầu ở chế độ mua hàng khi load app
+        // Khôi phục mode dựa trên role khi load app
+        const userRole = (action.payload as any)?.role;
+        state.appMode = (userRole === 'seller' || userRole === 'admin')
+          ? 'seller'
+          : 'buyer';
       })
       .addCase(checkAuth.rejected, (state) => {
         state.isLoading = false;

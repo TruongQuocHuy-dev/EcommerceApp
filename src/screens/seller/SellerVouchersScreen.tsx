@@ -47,7 +47,7 @@ const defaultForm = () => ({
     name: '',
     code: '',
     description: '',
-    type: 'percentage' as const,
+    type: 'percentage' as 'percentage' | 'fixed' | 'freeship',
     value: '',
     minOrderValue: '',
     maxDiscount: '',
