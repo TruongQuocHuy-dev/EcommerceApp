@@ -6,6 +6,7 @@ import {
     TouchableOpacity,
     ScrollView,
     Image,
+    Switch,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -17,9 +18,7 @@ import { logout, setAppMode } from '../../store/authSlice';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
-
-// --- Components ---
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface SettingItemProps {
     icon: string;
@@ -56,147 +55,128 @@ const SettingSection = ({ title, children }: { title: string; children: React.Re
     </View>
 );
 
-// --- Main Screen ---
-
-const ProfileScreen = () => {
+const SellerProfileScreen = () => {
     const dispatch = useAppDispatch();
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<NavigationProp>();
     const { user } = useAppSelector((state) => state.auth);
 
+    const handleSwitchToBuyer = () => {
+        dispatch(setAppMode('buyer'));
+        // The RootNavigator will automatically re-render and switch stacks based on appMode
+    };
+
     const handleLogout = () => {
         dispatch(logout());
     };
 
-    const handleSwitchToSeller = () => {
-        dispatch(setAppMode('seller'));
-    };
-
-    const isSeller = user?.role === 'seller' || user?.role === 'admin';
-
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             <ScrollView showsVerticalScrollIndicator={false}>
-                
-                {/* User Header */}
+                {/* Store Header */}
                 <View style={styles.header}>
-                    <View style={styles.userInfo}>
+                    <View style={styles.storeInfo}>
                         <View style={styles.avatarContainer}>
                             {user?.avatar ? (
                                 <Image source={{ uri: user.avatar }} style={styles.avatar} />
                             ) : (
                                 <View style={styles.avatarPlaceholder}>
-                                    <Text style={styles.avatarText}>
-                                        {user?.name?.charAt(0).toUpperCase() || 'U'}
-                                    </Text>
+                                    <Icon name="storefront" size={40} color="#fff" />
                                 </View>
                             )}
-                            <TouchableOpacity style={styles.editAvatarBtn} onPress={() => navigation.navigate('EditProfile')}>
-                                <Icon name="pencil" size={14} color="#fff" />
+                            <TouchableOpacity style={styles.editAvatarBtn}>
+                                <Icon name="camera" size={16} color="#fff" />
                             </TouchableOpacity>
                         </View>
-                        <View style={styles.userDetails}>
-                            <Text style={styles.userName}>{user?.name || 'User'}</Text>
-                            <Text style={styles.userEmail}>{user?.email || 'user@example.com'}</Text>
-                            <View style={styles.memberBadge}>
-                                <Icon name="crown" size={14} color="#f59e0b" />
-                                <Text style={styles.memberText}>Thành viên Bạc</Text>
+                        <View style={styles.storeDetails}>
+                            <Text style={styles.storeName}>{user?.name || 'Gian hàng của bạn'}</Text>
+                            <View style={styles.storeStatsRow}>
+                                <View style={styles.statBadge}>
+                                    <Icon name="star" size={14} color="#f59e0b" />
+                                    <Text style={styles.statText}> 4.9 Đánh giá</Text>
+                                </View>
+                                <View style={styles.statBadge}>
+                                    <Icon name="account-group" size={14} color={COLORS.primary} />
+                                    <Text style={styles.statText}> 1.2k Người theo dõi</Text>
+                                </View>
                             </View>
                         </View>
                     </View>
                 </View>
 
-                {/* Seller Mode Toggle OR Register Seller Card */}
-                {isSeller ? (
-                    <View style={styles.switchModeCard}>
-                        <View style={styles.switchModeInfo}>
-                            <View style={[styles.settingIconWrap, { backgroundColor: COLORS.primary + '20' }]}>
-                                <Icon name="shopping" size={24} color={COLORS.primary} />
-                            </View>
-                            <View>
-                                <Text style={styles.switchModeTitle}>Kênh Người Mua</Text>
-                                <Text style={styles.switchModeDesc}>Đang ở chế độ mua sắm</Text>
-                            </View>
+                {/* Switch Mode Toggle (Very prominent for Sellers) */}
+                <View style={styles.switchModeCard}>
+                    <View style={styles.switchModeInfo}>
+                        <View style={[styles.settingIconWrap, { backgroundColor: COLORS.primary + '20' }]}>
+                            <Icon name="store-cog" size={24} color={COLORS.primary} />
                         </View>
-                        <TouchableOpacity style={styles.switchBtn} onPress={handleSwitchToSeller}>
-                            <Icon name="swap-horizontal" size={18} color={COLORS.primary} />
-                            <Text style={styles.switchBtnText}>Sang Kênh Bán</Text>
-                        </TouchableOpacity>
+                        <View>
+                            <Text style={styles.switchModeTitle}>Kênh Người Bán</Text>
+                            <Text style={styles.switchModeDesc}>Đang ở chế độ quản lý cửa hàng</Text>
+                        </View>
                     </View>
-                ) : (
-                    <TouchableOpacity 
-                        style={[styles.switchModeCard, { backgroundColor: COLORS.primary + '10' }]}
-                        activeOpacity={0.8}
-                        onPress={() => navigation.navigate('SellerRegistration')}
-                    >
-                        <View style={styles.switchModeInfo}>
-                            <View style={[styles.settingIconWrap, { backgroundColor: COLORS.primary }]}>
-                                <Icon name="store-plus" size={24} color="#fff" />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.switchModeTitle}>Trở thành Người Bán</Text>
-                                <Text style={styles.switchModeDesc}>Đăng ký mở gian hàng hoàn toàn miễn phí!</Text>
-                            </View>
-                        </View>
-                        <Icon name="chevron-right" size={20} color={COLORS.primary} />
+                    <TouchableOpacity style={styles.switchBtn} onPress={handleSwitchToBuyer}>
+                        <Icon name="swap-horizontal" size={18} color={COLORS.primary} />
+                        <Text style={styles.switchBtnText}>Sang Kênh Mua</Text>
                     </TouchableOpacity>
-                )}
+                </View>
 
                 {/* Settings Sections */}
                 <View style={styles.content}>
                     
-                    <SettingSection title="Hoạt động mua sắm">
+                    <SettingSection title="Quản lý cửa hàng">
                         <SettingItem 
-                            icon="format-list-bulleted" 
-                            label="Đơn hàng của tôi" 
-                            color="#3b82f6" 
-                            onPress={() => {}} // Should link to Buyer Orders
-                        />
-                        <SettingItem 
-                            icon="heart-outline" 
-                            label="Danh sách yêu thích" 
-                            color="#ef4444" 
-                            onPress={() => navigation.navigate('Favorites')} 
-                        />
-                        <SettingItem 
-                            icon="clock-time-four-outline" 
-                            label="Nhật ký xem gần đây" 
+                            icon="store-edit-outline" 
+                            label="Hồ sơ cửa hàng" 
                             color="#8b5cf6" 
-                            onPress={() => navigation.navigate('ActivityLogs')} 
+                            onPress={() => navigation.navigate('SellerRegistration')} // Reuse form or create specific one
                         />
-                    </SettingSection>
-
-                    <SettingSection title="Tài khoản & Cài đặt">
                         <SettingItem 
-                            icon="map-marker-outline" 
-                            label="Địa chỉ giao hàng" 
+                            icon="truck-delivery-outline" 
+                            label="Cài đặt vận chuyển" 
+                            color="#3b82f6" 
+                            onPress={() => {}} 
+                        />
+                        <SettingItem 
+                            icon="bank-outline" 
+                            label="Tài khoản ngân hàng" 
                             color="#10b981" 
-                            onPress={() => navigation.navigate('AddressList')} 
-                        />
-                        <SettingItem 
-                            icon="account-edit-outline" 
-                            label="Chỉnh sửa hồ sơ" 
-                            color="#f59e0b" 
-                            onPress={() => navigation.navigate('EditProfile')} 
-                        />
-                        <SettingItem 
-                            icon="bell-outline" 
-                            label="Cài đặt thông báo" 
-                            color={COLORS.text.secondary} 
                             onPress={() => {}} 
                         />
                     </SettingSection>
 
-                    <SettingSection title="Hỗ trợ">
+                    <SettingSection title="Công cụ kinh doanh">
+                        <SettingItem 
+                            icon="ticket-percent-outline" 
+                            label="Mã giảm giá (Voucher)" 
+                            color="#f59e0b" 
+                            onPress={() => navigation.navigate('SellerVouchers' as any)} 
+                        />
+                        <SettingItem 
+                            icon="chart-line" 
+                            label="Phân tích & Báo cáo" 
+                            color="#ec4899" 
+                            onPress={() => {}} 
+                        />
+                        <SettingItem 
+                            icon="bullhorn-outline" 
+                            label="Quảng cáo gian hàng" 
+                            color="#ef4444" 
+                            onPress={() => {}} 
+                            value={<Text style={styles.badgeNew}>MỚI</Text>}
+                        />
+                    </SettingSection>
+
+                    <SettingSection title="Tài khoản & Hỗ trợ">
                         <SettingItem 
                             icon="shield-check-outline" 
-                            label="Chính sách bảo mật" 
+                            label="Bảo mật tài khoản" 
                             color={COLORS.text.secondary} 
                             onPress={() => {}} 
                         />
                         <SettingItem 
                             icon="help-circle-outline" 
-                            label="Trung tâm trợ giúp" 
+                            label="Trung tâm hỗ trợ Seller" 
                             color={COLORS.text.secondary} 
                             onPress={() => {}} 
                         />
@@ -206,7 +186,7 @@ const ProfileScreen = () => {
                     <View style={styles.logoutWrapper}>
                         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
                             <Icon name="logout" size={20} color={COLORS.error} />
-                            <Text style={styles.logoutText}>Đăng xuất tài khoản</Text>
+                            <Text style={styles.logoutText}>Đăng xuất khỏi thiết bị</Text>
                         </TouchableOpacity>
                         <Text style={styles.versionText}>Phiên bản 2.1.0 (BETA)</Text>
                     </View>
@@ -219,8 +199,6 @@ const ProfileScreen = () => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
-    
-    // Header
     header: {
         backgroundColor: '#fff',
         paddingHorizontal: SPACING.md,
@@ -229,7 +207,7 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: COLORS.border,
     },
-    userInfo: {
+    storeInfo: {
         flexDirection: 'row',
         alignItems: 'center',
     },
@@ -238,71 +216,63 @@ const styles = StyleSheet.create({
         marginRight: SPACING.md,
     },
     avatar: {
-        width: 70,
-        height: 70,
-        borderRadius: 35,
+        width: 80,
+        height: 80,
+        borderRadius: 40,
         borderWidth: 2,
-        borderColor: '#e2e8f0',
+        borderColor: COLORS.primary,
     },
     avatarPlaceholder: {
-        width: 70,
-        height: 70,
-        borderRadius: 35,
+        width: 80,
+        height: 80,
+        borderRadius: 40,
         backgroundColor: COLORS.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 2,
+        borderWidth: 3,
         borderColor: '#e2e8f0',
-    },
-    avatarText: {
-        fontSize: 28,
-        fontWeight: '800',
-        color: '#fff',
     },
     editAvatarBtn: {
         position: 'absolute',
         bottom: 0,
-        right: -4,
+        right: 0,
         backgroundColor: COLORS.text.primary,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 2,
         borderColor: '#fff',
     },
-    userDetails: {
+    storeDetails: {
         flex: 1,
     },
-    userName: {
-        fontSize: FONT_SIZE.lg,
+    storeName: {
+        fontSize: FONT_SIZE.xl,
         fontWeight: '800',
         color: COLORS.text.primary,
-        marginBottom: 2,
-    },
-    userEmail: {
-        fontSize: FONT_SIZE.sm,
-        color: COLORS.text.secondary,
         marginBottom: 6,
     },
-    memberBadge: {
+    storeStatsRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fef3c7',
+        gap: SPACING.sm,
+    },
+    statBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f1f5f9',
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: BORDER_RADIUS.sm,
-        alignSelf: 'flex-start',
-        gap: 4,
     },
-    memberText: {
+    statText: {
         fontSize: 11,
-        fontWeight: '700',
-        color: '#d97706',
+        fontWeight: '600',
+        color: COLORS.text.secondary,
     },
     
-    // Switch Mode Card
     switchModeCard: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -322,7 +292,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: SPACING.sm,
-        flex: 1,
     },
     switchModeTitle: {
         fontSize: FONT_SIZE.md,
@@ -349,7 +318,6 @@ const styles = StyleSheet.create({
         color: COLORS.primary,
     },
 
-    // Content & Sections
     content: {
         paddingHorizontal: SPACING.md,
         paddingTop: SPACING.xl,
@@ -400,8 +368,16 @@ const styles = StyleSheet.create({
     settingValue: {
         marginLeft: SPACING.sm,
     },
+    badgeNew: {
+        backgroundColor: COLORS.error,
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: '800',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
     
-    // Logout
     logoutWrapper: {
         marginTop: SPACING.lg,
         alignItems: 'center',
@@ -429,4 +405,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default ProfileScreen;
+export default SellerProfileScreen;

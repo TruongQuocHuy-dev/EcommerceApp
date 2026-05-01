@@ -6,7 +6,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import SellerDashboard from '../screens/seller/SellerDashboard';
 import SellerOrdersScreen from '../screens/seller/SellerOrdersScreen';
 import SellerProductsScreen from '../screens/seller/SellerProductsScreen';
-import ProfileScreen from '../screens/profile/ProfileScreen';
+import SellerProfileScreen from '../screens/seller/SellerProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -73,7 +73,7 @@ const SellerTabNavigator = () => {
             />
             <Tab.Screen 
                 name="SellerProfileTab" 
-                component={ProfileScreen} 
+                component={SellerProfileScreen} 
                 options={{ tabBarLabel: 'Cửa hàng' }} 
             />
         </Tab.Navigator>
