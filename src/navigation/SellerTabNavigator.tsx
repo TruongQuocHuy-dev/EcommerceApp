@@ -5,7 +5,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import SellerDashboard from '../screens/seller/SellerDashboard';
 import SellerOrdersScreen from '../screens/seller/SellerOrdersScreen';
-import SellerVouchersScreen from '../screens/seller/SellerVouchersScreen';
+import SellerProductsScreen from '../screens/seller/SellerProductsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
@@ -22,13 +22,13 @@ const SellerTabNavigator = () => {
 
                     switch (route.name) {
                         case 'SellerDashboardTab':
-                            iconName = focused ? 'package-variant' : 'package-variant-closed';
+                            iconName = focused ? 'view-dashboard' : 'view-dashboard-outline';
                             break;
                         case 'SellerOrdersTab':
                             iconName = focused ? 'clipboard-list' : 'clipboard-list-outline';
                             break;
-                        case 'SellerVouchersTab':
-                            iconName = focused ? 'ticket-percent' : 'ticket-percent-outline';
+                        case 'SellerProductsTab':
+                            iconName = focused ? 'package-variant' : 'package-variant-closed';
                             break;
                         case 'SellerProfileTab':
                             iconName = focused ? 'account' : 'account-outline';
@@ -59,7 +59,7 @@ const SellerTabNavigator = () => {
             <Tab.Screen 
                 name="SellerDashboardTab" 
                 component={SellerDashboard} 
-                options={{ tabBarLabel: 'Sản phẩm' }} 
+                options={{ tabBarLabel: 'Tổng quan' }} 
             />
             <Tab.Screen
                 name="SellerOrdersTab"
@@ -67,14 +67,14 @@ const SellerTabNavigator = () => {
                 options={{ tabBarLabel: 'Đơn hàng' }}
             />
             <Tab.Screen
-                name="SellerVouchersTab"
-                component={SellerVouchersScreen}
-                options={{ tabBarLabel: 'Voucher' }}
+                name="SellerProductsTab"
+                component={SellerProductsScreen}
+                options={{ tabBarLabel: 'Sản phẩm' }}
             />
             <Tab.Screen 
                 name="SellerProfileTab" 
                 component={ProfileScreen} 
-                options={{ tabBarLabel: 'Cá nhân' }} 
+                options={{ tabBarLabel: 'Cửa hàng' }} 
             />
         </Tab.Navigator>
     );

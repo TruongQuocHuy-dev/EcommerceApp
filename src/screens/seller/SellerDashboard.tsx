@@ -1,42 +1,30 @@
-import React, { useEffect, useCallback, useState, useRef } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import {
     View,
     Text,
     StyleSheet,
-    FlatList,
-    TouchableOpacity,
-    Alert,
-    RefreshControl,
-    TextInput,
-    Image,
-    Animated,
-    Dimensions,
-    StatusBar,
     ScrollView,
+    TouchableOpacity,
+    Animated,
+    RefreshControl,
+    StatusBar,
+    Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { fetchProducts, deleteProduct } from '../../store/productSlice';
+import { fetchProducts } from '../../store/productSlice';
+import { fetchOrders } from '../../store/orderSlice';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 
 type SellerDashboardNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = (SCREEN_WIDTH - SPACING.md * 3) / 2;
+// --- Components ---
 
-const FILTER_TABS = [
-    { key: 'all', label: 'Tất cả', icon: 'view-grid-outline' },
-    { key: 'active', label: 'Đang bán', icon: 'check-circle-outline' },
-    { key: 'low_stock', label: 'Sắp hết', icon: 'alert-outline' },
-    { key: 'featured', label: 'Nổi bật', icon: 'star-outline' },
-];
-
-// ────────────────────────── Stat Card ──────────────────────────
 const StatCard = ({
     icon,
     label,
@@ -66,745 +54,468 @@ const StatCard = ({
     return (
         <Animated.View
             style={[
-                statCardStyles.container,
+                styles.statCard,
                 {
                     opacity: anim,
                     transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
                 },
             ]}
         >
-            <View style={[statCardStyles.iconWrap, { backgroundColor: bg }]}>
+            <View style={[styles.statIconWrap, { backgroundColor: bg }]}>
                 <Icon name={icon} size={22} color={color} />
             </View>
-            <Text style={statCardStyles.value}>{value}</Text>
-            <Text style={statCardStyles.label}>{label}</Text>
+            <Text style={styles.statValue}>{value}</Text>
+            <Text style={styles.statLabel}>{label}</Text>
         </Animated.View>
     );
 };
 
-const statCardStyles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: COLORS.surface,
-        borderRadius: BORDER_RADIUS.xl,
-        padding: SPACING.md,
-        marginHorizontal: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.07,
-        shadowRadius: 8,
-        elevation: 3,
-        alignItems: 'flex-start',
-    },
-    iconWrap: {
-        width: 42,
-        height: 42,
-        borderRadius: BORDER_RADIUS.lg,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: SPACING.sm,
-    },
-    value: {
-        fontSize: FONT_SIZE.xxl,
-        fontWeight: '800',
-        color: COLORS.text.primary,
-        letterSpacing: -0.5,
-    },
-    label: {
-        fontSize: FONT_SIZE.xs,
-        color: COLORS.text.muted,
-        fontWeight: '500',
-        marginTop: 2,
-    },
-});
-
-// ────────────────────────── Product Card ──────────────────────────
-const ProductCard = ({
-    item,
-    onEdit,
-    onDelete,
-}: {
-    item: any;
-    onEdit: (id: string) => void;
-    onDelete: (id: string) => void;
-}) => {
-    const scale = useRef(new Animated.Value(1)).current;
-
-    const handlePressIn = () =>
-        Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 50 }).start();
-    const handlePressOut = () =>
-        Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 50 }).start();
-
-    const isLowStock = item.stock <= 5;
-    const isFeatured = item.isFeatured;
-    const thumbnail = item.images?.[0];
+const AlertItem = ({ icon, title, desc, type }: { icon: string; title: string; desc: string; type: 'warning' | 'error' | 'info' }) => {
+    const colors = {
+        warning: { color: '#f59e0b', bg: '#fef3c7' },
+        error: { color: '#ef4444', bg: '#fee2e2' },
+        info: { color: '#3b82f6', bg: '#dbeafe' },
+    };
 
     return (
-        <Animated.View style={{ transform: [{ scale }], width: CARD_WIDTH }}>
-            <TouchableOpacity
-                activeOpacity={1}
-                onPressIn={handlePressIn}
-                onPressOut={handlePressOut}
-                onPress={() => onEdit(item._id || item.id)}
-                style={productCardStyles.card}
-            >
-                {/* Image */}
-                <View style={productCardStyles.imageContainer}>
-                    {thumbnail ? (
-                        <Image source={{ uri: thumbnail }} style={productCardStyles.image} resizeMode="cover" />
-                    ) : (
-                        <View style={productCardStyles.imagePlaceholder}>
-                            <Icon name="image-outline" size={32} color={COLORS.text.muted} />
-                        </View>
-                    )}
-
-                    {/* Badges */}
-                    <View style={productCardStyles.badges}>
-                        {isFeatured && (
-                            <View style={productCardStyles.featuredBadge}>
-                                <Icon name="star" size={9} color="#fff" />
-                            </View>
-                        )}
-                        {isLowStock && (
-                            <View style={productCardStyles.lowStockBadge}>
-                                <Text style={productCardStyles.lowStockText}>
-                                    {item.stock === 0 ? 'Hết' : `Còn ${item.stock}`}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-                </View>
-
-                {/* Info */}
-                <View style={productCardStyles.info}>
-                    <Text style={productCardStyles.name} numberOfLines={2}>
-                        {item.name}
-                    </Text>
-                    <Text style={productCardStyles.price}>${Number(item.price).toLocaleString()}</Text>
-                    <View style={productCardStyles.stockRow}>
-                        <Icon
-                            name="package-variant"
-                            size={12}
-                            color={isLowStock ? COLORS.warning : COLORS.text.muted}
-                        />
-                        <Text
-                            style={[
-                                productCardStyles.stockText,
-                                isLowStock && { color: COLORS.warning },
-                            ]}
-                        >
-                            {item.stock} trong kho
-                        </Text>
-                    </View>
-                </View>
-
-                {/* Actions */}
-                <View style={productCardStyles.actions}>
-                    <TouchableOpacity
-                        style={productCardStyles.editBtn}
-                        onPress={() => onEdit(item._id || item.id)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 4 }}
-                    >
-                        <Icon name="pencil-outline" size={15} color={COLORS.primary} />
-                        <Text style={productCardStyles.editText}>Sửa</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={productCardStyles.deleteBtn}
-                        onPress={() => onDelete(item._id || item.id)}
-                        hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
-                    >
-                        <Icon name="delete-outline" size={15} color={COLORS.error} />
-                    </TouchableOpacity>
-                </View>
-            </TouchableOpacity>
-        </Animated.View>
+        <View style={[styles.alertItem, { borderColor: colors[type].color }]}>
+            <View style={[styles.alertIcon, { backgroundColor: colors[type].bg }]}>
+                <Icon name={icon} size={20} color={colors[type].color} />
+            </View>
+            <View style={styles.alertContent}>
+                <Text style={styles.alertTitle}>{title}</Text>
+                <Text style={styles.alertDesc}>{desc}</Text>
+            </View>
+        </View>
     );
 };
 
-const productCardStyles = StyleSheet.create({
-    card: {
-        backgroundColor: COLORS.surface,
-        borderRadius: BORDER_RADIUS.xl,
-        overflow: 'hidden',
-        marginBottom: SPACING.md,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 10,
-        elevation: 4,
-    },
-    imageContainer: {
-        width: '100%',
-        height: CARD_WIDTH * 0.85,
-        position: 'relative',
-    },
-    image: {
-        width: '100%',
-        height: '100%',
-    },
-    imagePlaceholder: {
-        width: '100%',
-        height: '100%',
-        backgroundColor: '#f1f5f9',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    badges: {
-        position: 'absolute',
-        top: 8,
-        left: 8,
-        flexDirection: 'column',
-        gap: 4,
-    },
-    featuredBadge: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        backgroundColor: '#f59e0b',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    lowStockBadge: {
-        backgroundColor: COLORS.error,
-        borderRadius: BORDER_RADIUS.sm,
-        paddingHorizontal: 5,
-        paddingVertical: 2,
-    },
-    lowStockText: {
-        fontSize: 9,
-        color: '#fff',
-        fontWeight: '700',
-    },
-    info: {
-        padding: SPACING.sm,
-        paddingTop: SPACING.sm,
-        paddingBottom: 4,
-    },
-    name: {
-        fontSize: FONT_SIZE.sm,
-        fontWeight: '600',
-        color: COLORS.text.primary,
-        lineHeight: 18,
-        marginBottom: 3,
-    },
-    price: {
-        fontSize: FONT_SIZE.md,
-        fontWeight: '800',
-        color: COLORS.primary,
-        letterSpacing: -0.3,
-    },
-    stockRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 3,
-        marginTop: 3,
-    },
-    stockText: {
-        fontSize: FONT_SIZE.xs,
-        color: COLORS.text.muted,
-    },
-    actions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: SPACING.sm,
-        paddingVertical: SPACING.xs,
-        borderTopWidth: 1,
-        borderTopColor: COLORS.divider,
-        marginTop: 4,
-    },
-    editBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 3,
-    },
-    editText: {
-        fontSize: FONT_SIZE.xs,
-        color: COLORS.primary,
-        fontWeight: '600',
-    },
-    deleteBtn: {
-        padding: 2,
-    },
-});
+// --- Main Screen ---
 
-// ────────────────────────── Main Screen ──────────────────────────
 const SellerDashboard = () => {
     const navigation = useNavigation<SellerDashboardNavigationProp>();
     const dispatch = useAppDispatch();
+    const insets = useSafeAreaInsets();
     const { user } = useAppSelector((state) => state.auth);
-    const { products, isLoading } = useAppSelector((state) => state.product);
+    const { products, isLoading: productsLoading } = useAppSelector((state) => state.product);
+    const { orders, pagination, isLoading: ordersLoading } = useAppSelector((state) => state.order);
 
-    const [search, setSearch] = useState('');
-    const [activeFilter, setActiveFilter] = useState('all');
-    const headerAnim = useRef(new Animated.Value(0)).current;
-
-    const loadSellerProducts = useCallback(() => {
+    const loadData = useCallback(() => {
         if (user?.id) {
             dispatch(fetchProducts({ seller: user.id }));
+            dispatch(fetchOrders({ asSeller: true, limit: 10 }));
         }
     }, [dispatch, user?.id]);
 
     useEffect(() => {
-        loadSellerProducts();
-        Animated.timing(headerAnim, {
-            toValue: 1,
-            duration: 600,
-            useNativeDriver: true,
-        }).start();
-    }, [loadSellerProducts]);
+        loadData();
+    }, [loadData]);
 
-    const filteredProducts = products.filter((p: any) => {
-        const matchesSearch = p.name?.toLowerCase().includes(search.toLowerCase());
-        if (!matchesSearch) return false;
-
-        switch (activeFilter) {
-            case 'active':
-                return p.isActive !== false;
-            case 'low_stock':
-                return p.stock <= 5;
-            case 'featured':
-                return p.isFeatured;
-            default:
-                return true;
-        }
-    });
-
-    // Stats computed from products
+    // Computed Stats
     const totalRevenue = products.reduce((sum: number, p: any) => sum + (p.price || 0) * (p.sold || 0), 0);
-    const totalProducts = products.length;
-    const lowStockCount = products.filter((p: any) => p.stock <= 5).length;
+    const lowStockProducts = products.filter((p: any) => p.stock <= 5);
+    const pendingOrders = orders.filter((o: any) => o.status === 'pending');
+    
+    const isCompletelyEmpty = products.length === 0 && orders.length === 0 && !productsLoading && !ordersLoading;
+    const recentOrders = orders.slice(0, 5); // Take top 5 recent orders
 
-    const handleDelete = (id: string) => {
-        Alert.alert('Xóa sản phẩm', 'Bạn có chắc chắn muốn xóa sản phẩm này?', [
-            { text: 'Hủy', style: 'cancel' },
-            {
-                text: 'Xóa',
-                style: 'destructive',
-                onPress: async () => {
-                    await dispatch(deleteProduct(id));
-                    loadSellerProducts();
-                },
-            },
-        ]);
+    const formatDate = (dateStr: string) => {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('vi-VN', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
     };
 
-    const handleEdit = (id: string) => {
-        navigation.navigate('AddEditProduct', { productId: id, isEdit: true });
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case 'pending': return { label: 'Chờ xác nhận', color: '#f59e0b' };
+            case 'processing': return { label: 'Đang xử lý', color: '#3b82f6' };
+            case 'shipped': return { label: 'Đang giao', color: '#8b5cf6' };
+            case 'delivered': return { label: 'Hoàn thành', color: '#10b981' };
+            case 'cancelled': return { label: 'Đã hủy', color: '#ef4444' };
+            default: return { label: status, color: COLORS.text.muted };
+        }
     };
-
-    const renderHeader = () => (
-        <>
-            {/* Hero Header */}
-            <Animated.View
-                style={{
-                    opacity: headerAnim,
-                    transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }],
-                }}
-            >
-                <View style={styles.heroGradient}>
-                    <View style={styles.heroTop}>
-                        <View>
-                            <Text style={styles.greeting}>Xin chào 👋</Text>
-                            <Text style={styles.heroName}>{user?.name || 'Seller'}</Text>
-                            <Text style={styles.heroSub}>Quản lý gian hàng của bạn</Text>
-                        </View>
-                        <View style={styles.quickActions}>
-                            <TouchableOpacity
-                                style={styles.quickBtn}
-                                onPress={() => navigation.navigate('SellerOrdersTab' as never)}
-                            >
-                                <Icon name="clipboard-list-outline" size={18} color={COLORS.primary} />
-                                <Text style={styles.quickBtnText}>Đơn hàng</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.quickBtn, { marginTop: 6 }]}
-                                onPress={() => navigation.navigate('SellerVouchersTab' as never)}
-                            >
-                                <Icon name="ticket-percent-outline" size={18} color='#8b5cf6' />
-                                <Text style={[styles.quickBtnText, { color: '#8b5cf6' }]}>Voucher</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    {/* Stats Row */}
-                    <View style={styles.statsRow}>
-                        <StatCard
-                            icon="package-variant-closed"
-                            label="Sản phẩm"
-                            value={totalProducts}
-                            color="#3b82f6"
-                            bg="#dbeafe"
-                            delay={100}
-                        />
-                        <StatCard
-                            icon="alert-circle-outline"
-                            label="Sắp hết"
-                            value={lowStockCount}
-                            color="#f59e0b"
-                            bg="#fef3c7"
-                            delay={200}
-                        />
-                        <StatCard
-                            icon="trending-up"
-                            label="Doanh thu"
-                            value={totalRevenue > 0 ? `$${(totalRevenue / 1000).toFixed(1)}K` : '$0'}
-                            color="#8b5cf6"
-                            bg="#ede9fe"
-                            delay={300}
-                        />
-                    </View>
-                </View>
-            </Animated.View>
-
-            {/* Search Bar */}
-            <View style={styles.searchWrap}>
-                <View style={styles.searchBox}>
-                    <Icon name="magnify" size={18} color={COLORS.text.muted} />
-                    <TextInput
-                        style={styles.searchInput}
-                        placeholder="Tìm sản phẩm..."
-                        placeholderTextColor={COLORS.text.muted}
-                        value={search}
-                        onChangeText={setSearch}
-                    />
-                    {search.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearch('')}>
-                            <Icon name="close-circle" size={16} color={COLORS.text.muted} />
-                        </TouchableOpacity>
-                    )}
-                </View>
-                <TouchableOpacity
-                    style={styles.addFab}
-                    onPress={() => navigation.navigate('AddEditProduct', { isEdit: false })}
-                    activeOpacity={0.85}
-                >
-                    <Icon name="plus" size={22} color="#fff" />
-                </TouchableOpacity>
-            </View>
-
-            {/* Filter Tabs */}
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.filterTabs}
-            >
-                {FILTER_TABS.map((tab) => {
-                    const isActive = activeFilter === tab.key;
-                    return (
-                        <TouchableOpacity
-                            key={tab.key}
-                            style={[styles.filterTab, isActive && styles.filterTabActive]}
-                            onPress={() => setActiveFilter(tab.key)}
-                            activeOpacity={0.75}
-                        >
-                            <Icon
-                                name={tab.icon}
-                                size={14}
-                                color={isActive ? '#fff' : COLORS.text.secondary}
-                            />
-                            <Text style={[styles.filterTabText, isActive && styles.filterTabTextActive]}>
-                                {tab.label}
-                            </Text>
-                        </TouchableOpacity>
-                    );
-                })}
-            </ScrollView>
-
-            {/* Section Title */}
-            <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>
-                    {filteredProducts.length} sản phẩm
-                </Text>
-            </View>
-        </>
-    );
-
-    const renderEmpty = () => {
-        if (isLoading) return null;
-        return (
-            <View style={styles.emptyContainer}>
-                <View style={styles.emptyIconWrap}>
-                    <Icon name="store-off-outline" size={52} color={COLORS.text.muted} />
-                </View>
-                <Text style={styles.emptyTitle}>
-                    {search || activeFilter !== 'all' ? 'Không tìm thấy' : 'Chưa có sản phẩm'}
-                </Text>
-                <Text style={styles.emptySubtitle}>
-                    {search
-                        ? `Không có kết quả cho "${search}"`
-                        : 'Thêm sản phẩm đầu tiên để bắt đầu bán hàng'}
-                </Text>
-                {!search && activeFilter === 'all' && (
-                    <TouchableOpacity
-                        style={styles.emptyAction}
-                        onPress={() => navigation.navigate('AddEditProduct', { isEdit: false })}
-                    >
-                        <Icon name="plus" size={16} color="#fff" />
-                        <Text style={styles.emptyActionText}>Thêm sản phẩm</Text>
-                    </TouchableOpacity>
-                )}
-            </View>
-        );
-    };
-
-    // Render 2-column grid
-    const renderRow = ({ item }: { item: any[] }) => (
-        <View style={styles.gridRow}>
-            {item.map((product: any) => (
-                <ProductCard
-                    key={product._id || product.id}
-                    item={product}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                />
-            ))}
-            {/* Placeholder if odd number */}
-            {item.length === 1 && <View style={{ width: CARD_WIDTH }} />}
-        </View>
-    );
-
-    // Group products into pairs for 2-column layout
-    const gridData: any[][] = [];
-    for (let i = 0; i < filteredProducts.length; i += 2) {
-        gridData.push(filteredProducts.slice(i, i + 2));
-    }
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             <StatusBar barStyle="light-content" backgroundColor="#16a34a" />
-            <FlatList
-                data={gridData}
-                keyExtractor={(_, i) => String(i)}
-                renderItem={renderRow}
-                ListHeaderComponent={renderHeader}
-                ListEmptyComponent={renderEmpty}
-                contentContainerStyle={styles.listContent}
+            <ScrollView
+                refreshControl={<RefreshControl refreshing={productsLoading || ordersLoading} onRefresh={loadData} />}
                 showsVerticalScrollIndicator={false}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={isLoading}
-                        onRefresh={loadSellerProducts}
-                        tintColor={COLORS.primary}
-                        colors={[COLORS.primary]}
-                    />
-                }
-            />
+                contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
+            >
+                {/* Hero Header */}
+                <View style={styles.hero}>
+                    <View style={styles.heroContent}>
+                        <View>
+                            <Text style={styles.greeting}>Bảng điều khiển</Text>
+                            <Text style={styles.shopName}>{user?.name || 'Cửa hàng của bạn'}</Text>
+                        </View>
+                        <TouchableOpacity 
+                            style={styles.profileBtn}
+                            onPress={() => navigation.navigate('SellerProfileTab' as any)}
+                        >
+                            <Icon name="store-cog-outline" size={28} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.mainStats}>
+                        <View style={styles.revenueBox}>
+                            <View style={styles.revenueHeader}>
+                                <Text style={styles.revenueLabel}>Doanh thu ước tính</Text>
+                                <View style={styles.badgeContext}>
+                                    <Text style={styles.badgeContextText}>Trong 30 ngày qua</Text>
+                                </View>
+                            </View>
+                            <Text style={styles.revenueValue}>${totalRevenue.toLocaleString()}</Text>
+                            {totalRevenue > 0 && (
+                                <Text style={styles.revenueTrend}>
+                                    <Icon name="trending-up" size={14} color="#a7f3d0" /> Tăng trưởng ổn định
+                                </Text>
+                            )}
+                        </View>
+                        <View style={styles.statsGrid}>
+                            <StatCard
+                                icon="package-variant"
+                                label="Sản phẩm"
+                                value={products.length}
+                                color="#3b82f6"
+                                bg="#dbeafe"
+                                delay={100}
+                            />
+                            <StatCard
+                                icon="cart-outline"
+                                label="Đơn hàng"
+                                value={pagination?.totalItems || 0}
+                                color="#10b981"
+                                bg="#d1fae5"
+                                delay={200}
+                            />
+                        </View>
+                    </View>
+                </View>
+
+                {/* Content */}
+                <View style={styles.content}>
+                    
+                    {/* Empty State Actionable */}
+                    {isCompletelyEmpty && (
+                        <View style={styles.emptyStateBox}>
+                            <Icon name="rocket-launch-outline" size={48} color="#f59e0b" style={styles.emptyIcon} />
+                            <Text style={styles.emptyTitle}>Bắt đầu hành trình bán hàng!</Text>
+                            <Text style={styles.emptyDesc}>Cửa hàng của bạn chưa có sản phẩm nào. Hãy đăng sản phẩm đầu tiên để bắt đầu nhận đơn hàng.</Text>
+                            
+                            <TouchableOpacity 
+                                style={styles.primaryCta}
+                                onPress={() => navigation.navigate('AddEditProduct', { isEdit: false })}
+                            >
+                                <Icon name="plus-circle" size={20} color="#fff" />
+                                <Text style={styles.primaryCtaText}>Đăng sản phẩm ngay</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                style={styles.secondaryCta}
+                                onPress={() => navigation.navigate('SellerVouchers' as any)}
+                            >
+                                <Icon name="ticket-percent-outline" size={20} color={COLORS.primary} />
+                                <Text style={styles.secondaryCtaText}>Tạo mã khuyến mãi</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    {/* Alerts Section (Only show if there are issues) */}
+                    {(lowStockProducts.length > 0 || pendingOrders.length > 0) && (
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeader}>
+                                <Text style={styles.sectionTitle}>⚠️ Cần chú ý</Text>
+                            </View>
+                            {pendingOrders.length > 0 && (
+                                <AlertItem
+                                    icon="bell-ring"
+                                    title={`${pendingOrders.length} Đơn hàng chờ xác nhận`}
+                                    desc="Xử lý ngay để đảm bảo tiến độ giao hàng."
+                                    type="error" // Make it red to grab attention
+                                />
+                            )}
+                            {lowStockProducts.length > 0 && (
+                                <AlertItem
+                                    icon="alert"
+                                    title={`${lowStockProducts.length} Sản phẩm sắp hết hàng`}
+                                    desc="Bổ sung tồn kho để không lỡ nhịp bán."
+                                    type="warning"
+                                />
+                            )}
+                        </View>
+                    )}
+
+                    {/* Quick Navigation */}
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Lối tắt</Text>
+                        <View style={styles.shortcutGrid}>
+                            <TouchableOpacity 
+                                style={styles.shortcutItem}
+                                onPress={() => navigation.navigate('SellerOrdersTab' as any)}
+                            >
+                                <View style={styles.iconContainer}>
+                                    <View style={[styles.shortcutIcon, { backgroundColor: '#fef3c7' }]}>
+                                        <Icon name="clipboard-list-outline" size={28} color="#f59e0b" />
+                                    </View>
+                                    {pendingOrders.length > 0 && (
+                                        <View style={styles.shortcutBadge}>
+                                            <Text style={styles.shortcutBadgeText}>{pendingOrders.length}</Text>
+                                        </View>
+                                    )}
+                                </View>
+                                <Text style={styles.shortcutText}>Đơn hàng</Text>
+                                {pendingOrders.length > 0 && (
+                                    <Text style={styles.shortcutHint}>{pendingOrders.length} đơn mới</Text>
+                                )}
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                style={styles.shortcutItem}
+                                onPress={() => navigation.navigate('SellerProductsTab' as any)}
+                            >
+                                <View style={styles.iconContainer}>
+                                    <View style={[styles.shortcutIcon, { backgroundColor: '#dcfce7' }]}>
+                                        <Icon name="package-variant-closed" size={28} color="#16a34a" />
+                                    </View>
+                                </View>
+                                <Text style={styles.shortcutText}>Sản phẩm</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                style={styles.shortcutItem}
+                                onPress={() => navigation.navigate('SellerVouchers' as any)}
+                            >
+                                <View style={styles.iconContainer}>
+                                    <View style={[styles.shortcutIcon, { backgroundColor: '#dbeafe' }]}>
+                                        <Icon name="ticket-percent-outline" size={28} color="#3b82f6" />
+                                    </View>
+                                </View>
+                                <Text style={styles.shortcutText}>Khuyến mãi</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {/* Recent Orders - Actionable Content */}
+                    {!isCompletelyEmpty && recentOrders.length > 0 && (
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeader}>
+                                <Text style={styles.sectionTitle}>Đơn hàng gần đây</Text>
+                                <TouchableOpacity onPress={() => navigation.navigate('SellerOrdersTab' as any)}>
+                                    <Text style={styles.seeAllText}>Xem tất cả</Text>
+                                </TouchableOpacity>
+                            </View>
+                            
+                            {recentOrders.map((order: any, index: number) => {
+                                const statusInfo = getStatusLabel(order.status);
+                                return (
+                                    <TouchableOpacity 
+                                        key={order.id || index}
+                                        style={styles.recentOrderCard}
+                                        onPress={() => navigation.navigate('SellerOrderDetail', { orderId: order.id })}
+                                    >
+                                        <View style={styles.recentOrderLeft}>
+                                            <View style={[styles.orderIconBg, { backgroundColor: statusInfo.color + '20' }]}>
+                                                <Icon name="receipt" size={20} color={statusInfo.color} />
+                                            </View>
+                                            <View>
+                                                <Text style={styles.recentOrderId}>#{order.orderNumber || order.id.slice(-6).toUpperCase()}</Text>
+                                                <Text style={[styles.recentOrderStatus, { color: statusInfo.color }]}>
+                                                    {statusInfo.label}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        <View style={styles.recentOrderRight}>
+                                            <View style={{ alignItems: 'flex-end', marginRight: 8 }}>
+                                                <Text style={styles.recentOrderAmount}>${order.totalAmount?.toFixed(2)}</Text>
+                                                <Text style={styles.recentOrderDate}>{formatDate(order.createdAt)}</Text>
+                                            </View>
+                                            <Icon name="chevron-right" size={20} color={COLORS.text.muted} />
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    )}
+
+                </View>
+            </ScrollView>
         </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f8fafc',
-    },
-    listContent: {
-        paddingBottom: 32,
-    },
-
-    // Hero
-    heroGradient: {
-        paddingTop: SPACING.lg,
-        paddingHorizontal: SPACING.md,
-        paddingBottom: SPACING.xl + 8,
-        borderBottomLeftRadius: 28,
-        borderBottomRightRadius: 28,
+    container: { flex: 1, backgroundColor: '#f8fafc' },
+    hero: {
         backgroundColor: '#16a34a',
+        paddingBottom: 40,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
     },
-    heroTop: {
+    heroContent: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: SPACING.lg,
-    },
-    greeting: {
-        fontSize: FONT_SIZE.sm,
-        color: 'rgba(255,255,255,0.8)',
-        fontWeight: '500',
-        marginBottom: 2,
-    },
-    heroName: {
-        fontSize: FONT_SIZE.xxl,
-        fontWeight: '800',
-        color: '#fff',
-        letterSpacing: -0.5,
-    },
-    heroSub: {
-        fontSize: FONT_SIZE.sm,
-        color: 'rgba(255,255,255,0.75)',
-        marginTop: 2,
-    },
-    quickActions: {
-        flexDirection: 'column',
-        alignItems: 'flex-end',
-    },
-    quickBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#fff',
-        paddingHorizontal: SPACING.md,
-        paddingVertical: 7,
-        borderRadius: BORDER_RADIUS.full,
-        gap: 5,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 5,
-        elevation: 2,
-    },
-    quickBtnText: {
-        fontSize: FONT_SIZE.xs,
-        fontWeight: '700',
-        color: COLORS.primary,
-    },
-    statsRow: {
-        flexDirection: 'row',
-        gap: SPACING.sm,
-    },
-
-    // Search
-    searchWrap: {
-        flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: SPACING.md,
         paddingTop: SPACING.md,
-        paddingBottom: SPACING.sm,
-        gap: SPACING.sm,
-        marginTop: -20,
     },
-    searchBox: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: COLORS.surface,
+    greeting: { fontSize: FONT_SIZE.sm, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
+    shopName: { fontSize: FONT_SIZE.xl, color: '#fff', fontWeight: '800' },
+    profileBtn: { padding: 4 },
+    mainStats: { paddingHorizontal: SPACING.md, marginTop: SPACING.xl },
+    revenueBox: {
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        padding: SPACING.lg,
         borderRadius: BORDER_RADIUS.xl,
-        paddingHorizontal: SPACING.md,
-        paddingVertical: 10,
-        gap: SPACING.sm,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 6,
-        elevation: 3,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-    },
-    searchInput: {
-        flex: 1,
-        fontSize: FONT_SIZE.md,
-        color: COLORS.text.primary,
-        padding: 0,
-    },
-    addFab: {
-        width: 46,
-        height: 46,
-        borderRadius: 23,
-        backgroundColor: COLORS.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 8,
-        elevation: 5,
-    },
-
-    // Filters
-    filterTabs: {
-        paddingHorizontal: SPACING.md,
-        paddingVertical: SPACING.sm,
-        gap: SPACING.sm,
-    },
-    filterTab: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: SPACING.md,
-        paddingVertical: 7,
-        borderRadius: BORDER_RADIUS.full,
-        backgroundColor: COLORS.surface,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        gap: 5,
-    },
-    filterTabActive: {
-        backgroundColor: COLORS.primary,
-        borderColor: COLORS.primary,
-    },
-    filterTabText: {
-        fontSize: FONT_SIZE.xs,
-        color: COLORS.text.secondary,
-        fontWeight: '600',
-    },
-    filterTabTextActive: {
-        color: '#fff',
-    },
-
-    // Section Header
-    sectionHeader: {
-        paddingHorizontal: SPACING.md,
-        paddingBottom: SPACING.sm,
-    },
-    sectionTitle: {
-        fontSize: FONT_SIZE.md,
-        fontWeight: '700',
-        color: COLORS.text.secondary,
-    },
-
-    // Grid
-    gridRow: {
-        flexDirection: 'row',
-        paddingHorizontal: SPACING.md,
-        gap: SPACING.md,
-    },
-
-    // Empty
-    emptyContainer: {
-        alignItems: 'center',
-        paddingTop: 60,
-        paddingHorizontal: SPACING.xl,
-    },
-    emptyIconWrap: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        backgroundColor: '#f1f5f9',
-        alignItems: 'center',
-        justifyContent: 'center',
         marginBottom: SPACING.md,
     },
-    emptyTitle: {
-        fontSize: FONT_SIZE.xl,
-        fontWeight: '700',
-        color: COLORS.text.primary,
-        marginBottom: SPACING.xs,
+    revenueHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
     },
-    emptySubtitle: {
-        fontSize: FONT_SIZE.sm,
-        color: COLORS.text.muted,
-        textAlign: 'center',
-        lineHeight: 20,
-        marginBottom: SPACING.lg,
+    revenueLabel: { color: 'rgba(255,255,255,0.9)', fontSize: FONT_SIZE.sm, fontWeight: '500' },
+    badgeContext: {
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: BORDER_RADIUS.sm,
     },
-    emptyAction: {
+    badgeContextText: { color: '#fff', fontSize: 10, fontWeight: '600' },
+    revenueValue: { color: '#fff', fontSize: 36, fontWeight: '800', letterSpacing: -1 },
+    revenueTrend: { color: '#a7f3d0', fontSize: FONT_SIZE.xs, marginTop: 4, fontWeight: '500' },
+    statsGrid: { flexDirection: 'row', gap: SPACING.sm },
+    statCard: {
+        flex: 1,
+        backgroundColor: '#fff',
+        padding: SPACING.md,
+        borderRadius: BORDER_RADIUS.xl,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+    },
+    statIconWrap: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+    statValue: { fontSize: FONT_SIZE.xl, fontWeight: '800', color: COLORS.text.primary },
+    statLabel: { fontSize: FONT_SIZE.xs, color: COLORS.text.muted, fontWeight: '600' },
+    
+    content: { padding: SPACING.md, marginTop: -20 },
+    section: { marginBottom: SPACING.xl },
+    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.md },
+    sectionTitle: { fontSize: FONT_SIZE.lg, fontWeight: '800', color: COLORS.text.primary },
+    seeAllText: { fontSize: FONT_SIZE.sm, color: COLORS.primary, fontWeight: '600' },
+    
+    // Alerts
+    alertItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        padding: SPACING.md,
+        borderRadius: BORDER_RADIUS.lg,
+        borderLeftWidth: 4,
+        marginBottom: SPACING.sm,
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        shadowOffset: { width: 0, height: 1 },
+    },
+    alertIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: SPACING.md },
+    alertContent: { flex: 1 },
+    alertTitle: { fontSize: FONT_SIZE.md, fontWeight: '700', color: COLORS.text.primary, marginBottom: 2 },
+    alertDesc: { fontSize: FONT_SIZE.sm, color: COLORS.text.secondary },
+    
+    // Shortcuts
+    shortcutGrid: { flexDirection: 'row', justifyContent: 'space-between' },
+    shortcutItem: { alignItems: 'center', width: '30%' },
+    iconContainer: { position: 'relative' },
+    shortcutIcon: { width: 60, height: 60, borderRadius: BORDER_RADIUS.xl, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+    shortcutBadge: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        backgroundColor: COLORS.error,
+        minWidth: 20,
+        height: 20,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: '#f8fafc',
+    },
+    shortcutBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+    shortcutText: { fontSize: FONT_SIZE.sm, color: COLORS.text.primary, fontWeight: '700' },
+    shortcutHint: { fontSize: 10, color: COLORS.error, fontWeight: '600', marginTop: 2 },
+    
+    // Empty State
+    emptyStateBox: {
+        backgroundColor: '#fff',
+        borderRadius: BORDER_RADIUS.xl,
+        padding: SPACING.xl,
+        alignItems: 'center',
+        marginBottom: SPACING.xl,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        shadowOffset: { width: 0, height: 2 },
+    },
+    emptyIcon: { marginBottom: SPACING.md },
+    emptyTitle: { fontSize: FONT_SIZE.lg, fontWeight: '800', color: COLORS.text.primary, marginBottom: SPACING.sm, textAlign: 'center' },
+    emptyDesc: { fontSize: FONT_SIZE.sm, color: COLORS.text.secondary, textAlign: 'center', marginBottom: SPACING.xl, lineHeight: 20 },
+    primaryCta: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: COLORS.primary,
-        paddingHorizontal: SPACING.lg,
-        paddingVertical: SPACING.md,
+        paddingHorizontal: SPACING.xl,
+        paddingVertical: 12,
         borderRadius: BORDER_RADIUS.full,
-        gap: SPACING.sm,
-        shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.35,
-        shadowRadius: 8,
-        elevation: 4,
+        gap: 8,
+        marginBottom: SPACING.sm,
+        width: '100%',
+        justifyContent: 'center',
     },
-    emptyActionText: {
-        fontSize: FONT_SIZE.md,
-        fontWeight: '700',
-        color: '#fff',
+    primaryCtaText: { color: '#fff', fontWeight: '700', fontSize: FONT_SIZE.md },
+    secondaryCta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f1f5f9',
+        paddingHorizontal: SPACING.xl,
+        paddingVertical: 12,
+        borderRadius: BORDER_RADIUS.full,
+        gap: 8,
+        width: '100%',
+        justifyContent: 'center',
     },
+    secondaryCtaText: { color: COLORS.primary, fontWeight: '700', fontSize: FONT_SIZE.md },
+
+    // Recent Orders
+    recentOrderCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#fff',
+        padding: SPACING.md,
+        borderRadius: BORDER_RADIUS.lg,
+        marginBottom: SPACING.sm,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    recentOrderLeft: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
+    orderIconBg: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+    recentOrderId: { fontSize: FONT_SIZE.md, fontWeight: '700', color: COLORS.text.primary, marginBottom: 2 },
+    recentOrderStatus: { fontSize: FONT_SIZE.xs, fontWeight: '600' },
+    recentOrderRight: { flexDirection: 'row', alignItems: 'center' },
+    recentOrderAmount: { fontSize: FONT_SIZE.md, fontWeight: '800', color: COLORS.text.primary },
+    recentOrderDate: { fontSize: 10, color: COLORS.text.muted, marginTop: 2 },
 });
 
 export default SellerDashboard;

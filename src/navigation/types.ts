@@ -15,7 +15,7 @@ export type MainTabParamList = {
 export type SellerTabParamList = {
     SellerDashboardTab: undefined;
     SellerOrdersTab: undefined;
-    SellerVouchersTab: undefined;
+    SellerProductsTab: undefined;
     SellerProfileTab: undefined;
 };
 

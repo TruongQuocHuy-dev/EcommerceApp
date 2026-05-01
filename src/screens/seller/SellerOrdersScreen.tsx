@@ -22,8 +22,7 @@ type SellerOrdersNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const STATUS_TABS = [
     { key: '', label: 'Tất cả', icon: 'format-list-bulleted' },
-    { key: 'pending', label: 'Mới', icon: 'bell-ring-outline' },
-    { key: 'processing', label: 'Đang xử lý', icon: 'cog-outline' },
+    { key: 'pending', label: 'Chờ xác nhận', icon: 'bell-ring-outline' },
     { key: 'shipped', label: 'Đang giao', icon: 'truck-delivery-outline' },
     { key: 'delivered', label: 'Hoàn thành', icon: 'check-circle-outline' },
     { key: 'cancelled', label: 'Đã hủy', icon: 'close-circle-outline' },
