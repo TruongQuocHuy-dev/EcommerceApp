@@ -15,6 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { logout, setAppMode } from '../../store/authSlice';
+import { fetchMyShop } from '../../store/shopSlice';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 
@@ -60,6 +61,11 @@ const SellerProfileScreen = () => {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<NavigationProp>();
     const { user } = useAppSelector((state) => state.auth);
+    const { myShop } = useAppSelector((state) => state.shop);
+
+    React.useEffect(() => {
+        dispatch(fetchMyShop());
+    }, [dispatch]);
 
     const handleSwitchToBuyer = () => {
         dispatch(setAppMode('buyer'));
@@ -77,8 +83,8 @@ const SellerProfileScreen = () => {
                 <View style={styles.header}>
                     <View style={styles.storeInfo}>
                         <View style={styles.avatarContainer}>
-                            {user?.avatar ? (
-                                <Image source={{ uri: user.avatar }} style={styles.avatar} />
+                            {myShop?.logo ? (
+                                <Image source={{ uri: myShop.logo }} style={styles.avatar} />
                             ) : (
                                 <View style={styles.avatarPlaceholder}>
                                     <Icon name="storefront" size={40} color="#fff" />
@@ -89,15 +95,15 @@ const SellerProfileScreen = () => {
                             </TouchableOpacity>
                         </View>
                         <View style={styles.storeDetails}>
-                            <Text style={styles.storeName}>{user?.name || 'Gian hàng của bạn'}</Text>
+                            <Text style={styles.storeName} numberOfLines={1}>{myShop?.name || 'Gian hàng của bạn'}</Text>
                             <View style={styles.storeStatsRow}>
                                 <View style={styles.statBadge}>
                                     <Icon name="star" size={14} color="#f59e0b" />
-                                    <Text style={styles.statText}> 4.9 Đánh giá</Text>
+                                    <Text style={styles.statText}> {myShop?.rating ? myShop.rating.toFixed(1) : '0.0'} Đánh giá</Text>
                                 </View>
                                 <View style={styles.statBadge}>
-                                    <Icon name="account-group" size={14} color={COLORS.primary} />
-                                    <Text style={styles.statText}> 1.2k Người theo dõi</Text>
+                                    <Icon name="comment-text-outline" size={14} color={COLORS.primary} />
+                                    <Text style={styles.statText}> {myShop?.reviewCount || 0} Nhận xét</Text>
                                 </View>
                             </View>
                         </View>
