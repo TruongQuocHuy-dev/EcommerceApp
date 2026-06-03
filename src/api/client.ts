@@ -4,10 +4,7 @@ import Storage from '../utils/storage';
 
 interface TokenResponse {
   data: {
-    tokens: {
-      accessToken: string;
-      refreshToken: string;
-    };
+    accessToken: string;
   };
 }
 
@@ -55,8 +52,8 @@ api.interceptors.response.use(
           refreshToken,
         });
 
-        const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
-          response.data.data.tokens;
+        const { accessToken: newAccessToken } = response.data.data;
+        const newRefreshToken = refreshToken; // Reuse current refresh token as backend doesn't rotate it
 
         await Storage.setTokens(newAccessToken, newRefreshToken);
 
