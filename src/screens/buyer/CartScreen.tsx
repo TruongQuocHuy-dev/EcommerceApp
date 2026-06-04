@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
     View,
     Text,
@@ -151,6 +151,39 @@ const CartScreen = () => {
 
     // Discount Modal State
     const [isDiscountModalVisible, setDiscountModalVisible] = useState(false);
+
+    const variationInfo = useMemo(() => {
+        if (!productDetails) return { stock: 0, price: 0, image: '', skuId: undefined };
+
+        if (productDetails.skus && productDetails.skus.length > 0 && productDetails.tierVariations) {
+            const tierIndex = productDetails.tierVariations.map((tier: any) => {
+                const selectedOption = selectedOptions[tier.name];
+                const optionIndex = tier.options.indexOf(selectedOption);
+                return optionIndex >= 0 ? optionIndex : 0;
+            });
+
+            const matchingSku = productDetails.skus.find((sku: any) => {
+                if (!sku.tierIndex || sku.tierIndex.length !== tierIndex.length) return false;
+                return sku.tierIndex.every((val: number, idx: number) => val === tierIndex[idx]);
+            });
+
+            if (matchingSku) {
+                return {
+                    stock: matchingSku.stock,
+                    price: matchingSku.price,
+                    image: (matchingSku.images && matchingSku.images.length > 0) ? matchingSku.images[0] : (productDetails.images?.[0] || 'https://via.placeholder.com/80'),
+                    skuId: matchingSku._id
+                };
+            }
+        }
+
+        return {
+            stock: productDetails.stock || 0,
+            price: productDetails.price || 0,
+            image: productDetails.images?.[0] || 'https://via.placeholder.com/80',
+            skuId: undefined
+        };
+    }, [productDetails, selectedOptions]);
 
     // ── Variation handlers ──
     const handleEditVariation = async (item: any) => {
@@ -541,12 +574,12 @@ const CartScreen = () => {
                             <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScrollView}>
                                 <View style={styles.modalProductInfo}>
                                     <Image
-                                        source={{ uri: productDetails.images?.[0] || 'https://via.placeholder.com/80' }}
+                                        source={{ uri: variationInfo.image }}
                                         style={styles.modalProductImage}
                                     />
                                     <View style={styles.modalProductDetails}>
-                                        <Text style={styles.modalProductPrice}>{formatPrice(productDetails.price)}đ</Text>
-                                        <Text style={styles.modalProductStock}>Kho: {productDetails.stock}</Text>
+                                        <Text style={styles.modalProductPrice}>{formatPrice(variationInfo.price)}đ</Text>
+                                        <Text style={styles.modalProductStock}>Kho: {variationInfo.stock}</Text>
                                     </View>
                                 </View>
 

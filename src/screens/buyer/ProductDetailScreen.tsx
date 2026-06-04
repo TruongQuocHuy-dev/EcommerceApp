@@ -178,7 +178,7 @@ const ProductDetailScreen = () => {
                 return {
                     stock: matchingSku.stock,
                     price: matchingSku.price,
-                    image: matchingSku.image || product.images?.[0] || 'https://via.placeholder.com/150',
+                    image: (matchingSku.images && matchingSku.images.length > 0) ? matchingSku.images[0] : (product.images?.[0] || 'https://via.placeholder.com/150'),
                     originalPrice: matchingSku.originalPrice || matchingSku.price,
                     skuId: matchingSku._id
                 };
