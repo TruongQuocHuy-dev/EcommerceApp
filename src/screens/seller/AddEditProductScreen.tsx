@@ -12,6 +12,7 @@ import { launchImageLibrary, Asset } from 'react-native-image-picker';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { createProduct, updateProduct, fetchProductById } from '../../store/productSlice';
 import { fetchCategories } from '../../store/categorySlice';
+import { fetchMyShop } from '../../store/shopSlice';
 import api from '../../api/client';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
@@ -27,6 +28,7 @@ const AddEditProductScreen = () => {
     const { productId, isEdit } = route.params || {};
     const { isLoading, currentProduct } = useAppSelector((state) => state.product);
     const { categories, isLoading: isCategoriesLoading } = useAppSelector((state) => state.category);
+    const { myShop } = useAppSelector((state) => state.shop);
 
     const [activeTab, setActiveTab] = useState<'general' | 'variants' | 'seo'>('general');
     const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
@@ -116,6 +118,11 @@ const AddEditProductScreen = () => {
     // Fetch initial data
     useEffect(() => {
         dispatch(fetchCategories());
+
+        // Fetch my shop if not already loaded
+        if (!myShop) {
+            dispatch(fetchMyShop());
+        }
         
         const fetchBrandsAndSuppliers = async () => {
             try {
@@ -144,7 +151,7 @@ const AddEditProductScreen = () => {
         if (isEdit && productId) {
             dispatch(fetchProductById(productId));
         }
-    }, [isEdit, productId, dispatch]);
+    }, [isEdit, productId, dispatch, myShop]);
 
     // Populate form data when currentProduct is ready
     useEffect(() => {
@@ -238,6 +245,11 @@ const AddEditProductScreen = () => {
     };
 
     const handleSubmit = async () => {
+        if (myShop?.status === 'suspended') {
+            Alert.alert('Thông báo', 'Cửa hàng của bạn đang bị tạm khóa. Không thể thực hiện thao tác này.');
+            return;
+        }
+
         if (!form.name || !form.price || !form.stock || !form.category) {
             Alert.alert('Error', 'Please fill in all required fields (Name, Price, Stock, Category).');
             return;
@@ -673,15 +685,15 @@ const AddEditProductScreen = () => {
             {/* Bottom Fix Button */}
             <View style={styles.bottomBar}>
                 <TouchableOpacity
-                    style={[styles.submitButton, isLoading && styles.disabledButton]}
+                    style={[styles.submitButton, (isLoading || myShop?.status === 'suspended') && styles.disabledButton]}
                     onPress={handleSubmit}
-                    disabled={isLoading}
+                    disabled={isLoading || myShop?.status === 'suspended'}
                 >
                     {isLoading ? (
                         <ActivityIndicator color={COLORS.text.inverse} />
                     ) : (
                         <Text style={styles.submitButtonText}>
-                            {isEdit ? 'Update Product' : 'Create Product'}
+                            {myShop?.status === 'suspended' ? 'Cửa hàng đang bị khóa' : isEdit ? 'Update Product' : 'Create Product'}
                         </Text>
                     )}
                 </TouchableOpacity>

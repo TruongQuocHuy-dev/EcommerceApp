@@ -9,6 +9,7 @@ export interface Shop {
     logo: string;
     banner: string;
     status: 'pending' | 'approved' | 'rejected' | 'suspended';
+    suspensionReason?: string;
     address?: {
         street?: string;
         city?: string;

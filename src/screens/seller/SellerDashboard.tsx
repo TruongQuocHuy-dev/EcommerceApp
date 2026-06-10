@@ -9,15 +9,17 @@ import {
     RefreshControl,
     StatusBar,
     Image,
+    Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { fetchProducts } from '../../store/productSlice';
 import { fetchOrders } from '../../store/orderSlice';
+import { fetchMyShop } from '../../store/shopSlice';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 
@@ -99,17 +101,42 @@ const SellerDashboard = () => {
     const { user } = useAppSelector((state) => state.auth);
     const { products, isLoading: productsLoading } = useAppSelector((state) => state.product);
     const { orders, pagination, isLoading: ordersLoading } = useAppSelector((state) => state.order);
+    const { myShop } = useAppSelector((state) => state.shop);
 
     const loadData = useCallback(() => {
         if (user?.id) {
             dispatch(fetchProducts({ seller: user.id }));
             dispatch(fetchOrders({ asSeller: true, limit: 10 }));
+            dispatch(fetchMyShop());
         }
     }, [dispatch, user?.id]);
 
+    const isFocused = useIsFocused();
+
     useEffect(() => {
+        if (!isFocused) return;
+
         loadData();
-    }, [loadData]);
+
+        // Poll shop status every 5 seconds while focused
+        const timer = setInterval(() => {
+            if (user?.id) {
+                dispatch(fetchMyShop());
+            }
+        }, 5000);
+
+        return () => clearInterval(timer);
+    }, [isFocused, loadData, user?.id]);
+
+    useEffect(() => {
+        if (myShop?.status === 'suspended') {
+            Alert.alert(
+                'Cửa hàng bị tạm khóa',
+                `Cửa hàng của bạn đã bị tạm khóa.\nLý do: ${myShop.suspensionReason || 'Không có lý do cụ thể.'}\n\nVui lòng liên hệ Admin để được hỗ trợ.`,
+                [{ text: 'Đóng', style: 'cancel' }]
+            );
+        }
+    }, [myShop?.status, myShop?.suspensionReason]);
 
     // Computed Stats
     const totalRevenue = products.reduce((sum: number, p: any) => sum + (p.price || 0) * (p.sold || 0), 0);
@@ -202,6 +229,28 @@ const SellerDashboard = () => {
                 {/* Content */}
                 <View style={styles.content}>
                     
+                    {/* Shop Suspended Warning Banner */}
+                    {myShop?.status === 'suspended' && (
+                        <View style={styles.suspendedBanner}>
+                            <View style={styles.suspendedHeader}>
+                                <Icon name="alert-octagon" size={24} color={COLORS.error} />
+                                <Text style={styles.suspendedTitle}>CỬA HÀNG ĐANG BỊ TẠM KHÓA</Text>
+                            </View>
+                            <Text style={styles.suspendedDesc}>
+                                Cửa hàng của bạn đã bị quản trị viên tạm khóa.
+                            </Text>
+                            {myShop.suspensionReason && (
+                                <View style={styles.reasonBox}>
+                                    <Text style={styles.reasonLabel}>Lý do khóa:</Text>
+                                    <Text style={styles.reasonText}>{myShop.suspensionReason}</Text>
+                                </View>
+                            )}
+                            <Text style={styles.contactSupportText}>
+                                Vui lòng liên hệ với bộ phận hỗ trợ khách hàng để được trợ giúp giải quyết.
+                            </Text>
+                        </View>
+                    )}
+
                     {/* Empty State Actionable */}
                     {isCompletelyEmpty && (
                         <View style={styles.emptyStateBox}>
@@ -210,16 +259,18 @@ const SellerDashboard = () => {
                             <Text style={styles.emptyDesc}>Cửa hàng của bạn chưa có sản phẩm nào. Hãy đăng sản phẩm đầu tiên để bắt đầu nhận đơn hàng.</Text>
                             
                             <TouchableOpacity 
-                                style={styles.primaryCta}
+                                style={[styles.primaryCta, myShop?.status === 'suspended' && styles.disabledCta]}
                                 onPress={() => navigation.navigate('AddEditProduct', { isEdit: false })}
+                                disabled={myShop?.status === 'suspended'}
                             >
                                 <Icon name="plus-circle" size={20} color="#fff" />
                                 <Text style={styles.primaryCtaText}>Đăng sản phẩm ngay</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity 
-                                style={styles.secondaryCta}
+                                style={[styles.secondaryCta, myShop?.status === 'suspended' && styles.disabledCtaSecondary]}
                                 onPress={() => navigation.navigate('SellerVouchers' as any)}
+                                disabled={myShop?.status === 'suspended'}
                             >
                                 <Icon name="ticket-percent-outline" size={20} color={COLORS.primary} />
                                 <Text style={styles.secondaryCtaText}>Tạo mã khuyến mãi</Text>
@@ -288,9 +339,10 @@ const SellerDashboard = () => {
                                 <Text style={styles.shortcutText}>Sản phẩm</Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity 
-                                style={styles.shortcutItem}
+                             <TouchableOpacity 
+                                style={[styles.shortcutItem, myShop?.status === 'suspended' && { opacity: 0.5 }]}
                                 onPress={() => navigation.navigate('SellerVouchers' as any)}
+                                disabled={myShop?.status === 'suspended'}
                             >
                                 <View style={styles.iconContainer}>
                                     <View style={[styles.shortcutIcon, { backgroundColor: '#dbeafe' }]}>
@@ -516,6 +568,63 @@ const styles = StyleSheet.create({
     recentOrderRight: { flexDirection: 'row', alignItems: 'center' },
     recentOrderAmount: { fontSize: FONT_SIZE.md, fontWeight: '800', color: COLORS.text.primary },
     recentOrderDate: { fontSize: 10, color: COLORS.text.muted, marginTop: 2 },
+
+    // Suspended Shop Styles
+    suspendedBanner: {
+        backgroundColor: '#fee2e2',
+        borderWidth: 1.5,
+        borderColor: COLORS.error,
+        borderRadius: BORDER_RADIUS.xl,
+        padding: SPACING.md,
+        marginBottom: SPACING.lg,
+    },
+    suspendedHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 8,
+    },
+    suspendedTitle: {
+        fontSize: FONT_SIZE.md,
+        fontWeight: '800',
+        color: COLORS.error,
+    },
+    suspendedDesc: {
+        fontSize: FONT_SIZE.sm,
+        color: COLORS.text.primary,
+        fontWeight: '600',
+        marginBottom: 8,
+    },
+    reasonBox: {
+        backgroundColor: 'rgba(239, 68, 68, 0.08)',
+        borderRadius: BORDER_RADIUS.md,
+        padding: SPACING.sm,
+        marginBottom: 8,
+    },
+    reasonLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: COLORS.error,
+        textTransform: 'uppercase',
+        marginBottom: 2,
+    },
+    reasonText: {
+        fontSize: 13,
+        color: COLORS.text.primary,
+        fontWeight: '500',
+    },
+    contactSupportText: {
+        fontSize: 12,
+        color: COLORS.text.secondary,
+        fontStyle: 'italic',
+    },
+    disabledCta: {
+        backgroundColor: COLORS.text.muted,
+        shadowColor: 'transparent',
+    },
+    disabledCtaSecondary: {
+        backgroundColor: '#e2e8f0',
+    },
 });
 
 export default SellerDashboard;
