@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity,
-    Alert, ActivityIndicator, Image, Modal, FlatList, KeyboardAvoidingView, Platform
+    Alert, ActivityIndicator, Image, Modal, FlatList, KeyboardAvoidingView, Platform,
+    StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -20,6 +21,19 @@ import { RootStackParamList } from '../../navigation/types';
 type AddEditProductScreenRouteProp = RouteProp<RootStackParamList, 'AddEditProduct'>;
 type AddEditProductScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+const getFlattenedCategories = (cats: any[], prefix = ''): any[] => {
+    let list: any[] = [];
+    cats.forEach((cat) => {
+        const displayName = prefix ? `${prefix} ➔ ${cat.name}` : cat.name;
+        const flatCat = { ...cat, displayName };
+        list.push(flatCat);
+        if (cat.children && cat.children.length > 0) {
+            list = list.concat(getFlattenedCategories(cat.children, displayName));
+        }
+    });
+    return list;
+};
+
 const AddEditProductScreen = () => {
     const navigation = useNavigation<AddEditProductScreenNavigationProp>();
     const route = useRoute<AddEditProductScreenRouteProp>();
@@ -34,6 +48,14 @@ const AddEditProductScreen = () => {
     const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
     const [isBrandModalVisible, setBrandModalVisible] = useState(false);
     const [isSupplierModalVisible, setSupplierModalVisible] = useState(false);
+
+    const [categorySearch, setCategorySearch] = useState('');
+    const [modalCategoryPath, setModalCategoryPath] = useState<any[]>([]);
+
+    const flatCategories = getFlattenedCategories(categories);
+    const filteredFlatCategories = flatCategories.filter(cat =>
+        cat.displayName.toLowerCase().includes(categorySearch.toLowerCase())
+    );
 
     const [brands, setBrands] = useState<any[]>([]);
     const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -157,7 +179,9 @@ const AddEditProductScreen = () => {
     useEffect(() => {
         if (isEdit && currentProduct && currentProduct.id === productId) {
             const catId = typeof currentProduct.category === 'object' ? (currentProduct.category?._id || currentProduct.category?.id) : currentProduct.category;
-            const catName = categories.find((c: any) => (c._id || c.id) === catId)?.name || '';
+            
+            const flatCats = getFlattenedCategories(categories);
+            const catName = flatCats.find((c: any) => (c._id || c.id) === catId)?.displayName || '';
 
             const brandId = typeof currentProduct.brand === 'object' ? (currentProduct.brand?._id || currentProduct.brand?.id) : currentProduct.brand;
             const brandName = brands.find((b: any) => (b._id || b.id) === brandId)?.name || '';
@@ -171,11 +195,11 @@ const AddEditProductScreen = () => {
                 price: currentProduct.price?.toString() || '',
                 stock: currentProduct.stock?.toString() || '',
                 category: catId || '',
-                categoryName: catName || 'Select Category',
+                categoryName: catName || 'Chọn danh mục',
                 brand: brandId || '',
-                brandName: brandName || 'Select Brand',
+                brandName: brandName || 'Chọn thương hiệu',
                 supplier: supplierId || '',
-                supplierName: supplierName || 'Select Supplier',
+                supplierName: supplierName || 'Chọn nhà cung cấp',
                 metaTitle: currentProduct.metaTitle || '',
                 metaDescription: currentProduct.metaDescription || '',
                 metaKeywords: currentProduct.metaKeywords || '',
@@ -192,7 +216,7 @@ const AddEditProductScreen = () => {
     };
 
     const handleSelectCategory = (cat: any) => {
-        setForm(prev => ({ ...prev, category: cat._id || cat.id, categoryName: cat.name }));
+        setForm(prev => ({ ...prev, category: cat._id || cat.id, categoryName: cat.displayName }));
         setCategoryModalVisible(false);
     };
 
@@ -209,7 +233,7 @@ const AddEditProductScreen = () => {
     const handlePickImage = async () => {
         const totalImages = images.length + existingImages.length;
         if (totalImages >= 5) {
-            Alert.alert('Limit Reached', 'You can only upload up to 5 images.');
+            Alert.alert('Đạt giới hạn', 'Bạn chỉ có thể tải lên tối đa 5 hình ảnh sản phẩm.');
             return;
         }
 
@@ -251,12 +275,12 @@ const AddEditProductScreen = () => {
         }
 
         if (!form.name || !form.price || !form.stock || !form.category) {
-            Alert.alert('Error', 'Please fill in all required fields (Name, Price, Stock, Category).');
+            Alert.alert('Lỗi nhập liệu', 'Vui lòng điền đầy đủ các trường thông tin bắt buộc (Tên, Giá, Kho hàng, Danh mục).');
             return;
         }
 
         if (images.length === 0 && existingImages.length === 0) {
-            Alert.alert('Error', 'Please provide at least one product image.');
+            Alert.alert('Lỗi tải ảnh', 'Vui lòng chọn ít nhất một hình ảnh sản phẩm.');
             return;
         }
 
@@ -303,21 +327,17 @@ const AddEditProductScreen = () => {
             } as any);
         });
 
-        // Note: For existing images, the API might not support retaining them if new images are uploaded via FormData 
-        // without a specific protocol, but we'll leave it simple for now, as standard multipart usually overwrites 
-        // or expects all assets. This strictly follows standard React Native multi-part.
-
         try {
             if (isEdit && productId) {
                 await dispatch(updateProduct({ id: productId, data: formData })).unwrap();
-                Alert.alert('Success', 'Product updated successfully');
+                Alert.alert('Thành công', 'Cập nhật sản phẩm thành công');
             } else {
                 await dispatch(createProduct(formData)).unwrap();
-                Alert.alert('Success', 'Product created successfully');
+                Alert.alert('Thành công', 'Đăng sản phẩm mới thành công');
             }
             navigation.goBack();
         } catch (error: any) {
-            Alert.alert('Error', typeof error === 'string' ? error : 'Operation failed');
+            Alert.alert('Lỗi hệ thống', typeof error === 'string' ? error : 'Thao tác thất bại');
         }
     };
 
@@ -330,38 +350,41 @@ const AddEditProductScreen = () => {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top']}>
+            <StatusBar barStyle="light-content" backgroundColor="#16a34a" />
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-                    <Icon name="arrow-left" size={24} color={COLORS.text.primary} />
+                    <Icon name="arrow-left" size={24} color="#FFF" />
                 </TouchableOpacity>
-                <Text style={styles.title}>{isEdit ? 'Edit Product' : 'Add New Product'}</Text>
+                <Text style={styles.title}>{isEdit ? 'Cập nhật sản phẩm' : 'Đăng sản phẩm mới'}</Text>
                 <View style={styles.headerButton} />
             </View>
 
             {/* Tab Header */}
-            <View style={styles.tabContainer}>
-                <TouchableOpacity
-                    style={[styles.tabButton, activeTab === 'general' && styles.activeTabButton]}
-                    onPress={() => setActiveTab('general')}
-                >
-                    <Icon name="package-variant-closed" size={20} color={activeTab === 'general' ? COLORS.primary : COLORS.text.secondary} />
-                    <Text style={[styles.tabText, activeTab === 'general' && styles.activeTabText]}>General Info</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tabButton, activeTab === 'variants' && styles.activeTabButton]}
-                    onPress={() => setActiveTab('variants')}
-                >
-                    <Icon name="tag-multiple" size={20} color={activeTab === 'variants' ? COLORS.primary : COLORS.text.secondary} />
-                    <Text style={[styles.tabText, activeTab === 'variants' && styles.activeTabText]}>Variants</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tabButton, activeTab === 'seo' && styles.activeTabButton]}
-                    onPress={() => setActiveTab('seo')}
-                >
-                    <Icon name="search-web" size={20} color={activeTab === 'seo' ? COLORS.primary : COLORS.text.secondary} />
-                    <Text style={[styles.tabText, activeTab === 'seo' && styles.activeTabText]}>SEO</Text>
-                </TouchableOpacity>
+            <View style={styles.tabWrapper}>
+                <View style={styles.tabContainer}>
+                    <TouchableOpacity
+                        style={[styles.tabButton, activeTab === 'general' && styles.activeTabButton]}
+                        onPress={() => setActiveTab('general')}
+                    >
+                        <Icon name="package-variant-closed" size={18} color={activeTab === 'general' ? '#FFF' : COLORS.text.secondary} />
+                        <Text style={[styles.tabText, activeTab === 'general' && styles.activeTabText]}>Thông tin</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tabButton, activeTab === 'variants' && styles.activeTabButton]}
+                        onPress={() => setActiveTab('variants')}
+                    >
+                        <Icon name="tag-multiple" size={18} color={activeTab === 'variants' ? '#FFF' : COLORS.text.secondary} />
+                        <Text style={[styles.tabText, activeTab === 'variants' && styles.activeTabText]}>Phân loại</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tabButton, activeTab === 'seo' && styles.activeTabButton]}
+                        onPress={() => setActiveTab('seo')}
+                    >
+                        <Icon name="search-web" size={18} color={activeTab === 'seo' ? '#FFF' : COLORS.text.secondary} />
+                        <Text style={[styles.tabText, activeTab === 'seo' && styles.activeTabText]}>SEO</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
@@ -369,113 +392,151 @@ const AddEditProductScreen = () => {
 
                     {activeTab === 'general' && (
                         <View style={styles.section}>
-                            <View style={styles.formGroup}>
-                                <Text style={styles.label}>Product Name *</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    value={form.name}
-                                    onChangeText={(text) => handleChange('name', text)}
-                                    placeholder="Enter product name"
-                                />
-                            </View>
-
-                            <View style={styles.row}>
-                                <View style={[styles.formGroup, { flex: 1, marginRight: SPACING.xs }]}>
-                                    <Text style={styles.label}>Price *</Text>
+                            <View style={styles.formCard}>
+                                <Text style={styles.cardTitle}>Thông tin cơ bản</Text>
+                                <Text style={styles.cardSubtitle}>Điền các thông tin cơ bản cho sản phẩm mới</Text>
+                                
+                                <View style={styles.formGroup}>
+                                    <View style={styles.labelRow}>
+                                        <Icon name="pencil-box-outline" size={18} color={COLORS.primary} />
+                                        <Text style={styles.label}>Tên sản phẩm *</Text>
+                                    </View>
                                     <TextInput
                                         style={styles.input}
-                                        value={form.price}
-                                        onChangeText={(text) => handleChange('price', text)}
-                                        placeholder="0.00"
-                                        keyboardType="numeric"
+                                        value={form.name}
+                                        onChangeText={(text) => handleChange('name', text)}
+                                        placeholder="Nhập tên sản phẩm..."
+                                        placeholderTextColor={COLORS.text.muted}
                                     />
                                 </View>
-                                <View style={[styles.formGroup, { flex: 1, marginLeft: SPACING.xs }]}>
-                                    <Text style={styles.label}>Stock *</Text>
+
+                                <View style={styles.formGroup}>
+                                    <View style={styles.labelRow}>
+                                        <Icon name="folder-outline" size={18} color={COLORS.primary} />
+                                        <Text style={styles.label}>Danh mục sản phẩm *</Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        style={styles.dropdownButton}
+                                        onPress={() => setCategoryModalVisible(true)}
+                                    >
+                                        <Text style={form.categoryName && form.categoryName !== 'Select Category' ? styles.dropdownText : styles.dropdownPlaceholder}>
+                                            {form.categoryName && form.categoryName !== 'Select Category' ? form.categoryName : 'Chọn danh mục'}
+                                        </Text>
+                                        <Icon name="chevron-down" size={20} color={COLORS.text.secondary} />
+                                    </TouchableOpacity>
+                                </View>
+
+                                <View style={styles.row}>
+                                    <View style={[styles.formGroup, { flex: 1, marginRight: SPACING.sm }]}>
+                                        <View style={styles.labelRow}>
+                                            <Icon name="tag-outline" size={18} color={COLORS.primary} />
+                                            <Text style={styles.label}>Thương hiệu</Text>
+                                        </View>
+                                        <TouchableOpacity
+                                            style={styles.dropdownButton}
+                                            onPress={() => setBrandModalVisible(true)}
+                                        >
+                                            <Text style={form.brandName && form.brandName !== 'Select Brand' ? styles.dropdownText : styles.dropdownPlaceholder} numberOfLines={1}>
+                                                {form.brandName && form.brandName !== 'Select Brand' ? form.brandName : 'Chọn thương hiệu'}
+                                            </Text>
+                                            <Icon name="chevron-down" size={20} color={COLORS.text.secondary} />
+                                        </TouchableOpacity>
+                                    </View>
+                                    <View style={[styles.formGroup, { flex: 1, marginLeft: SPACING.sm }]}>
+                                        <View style={styles.labelRow}>
+                                            <Icon name="truck-delivery-outline" size={18} color={COLORS.primary} />
+                                            <Text style={styles.label}>Nhà cung cấp</Text>
+                                        </View>
+                                        <TouchableOpacity
+                                            style={styles.dropdownButton}
+                                            onPress={() => setSupplierModalVisible(true)}
+                                        >
+                                            <Text style={form.supplierName && form.supplierName !== 'Select Supplier' ? styles.dropdownText : styles.dropdownPlaceholder} numberOfLines={1}>
+                                                {form.supplierName && form.supplierName !== 'Select Supplier' ? form.supplierName : 'Chọn nhà cung cấp'}
+                                            </Text>
+                                            <Icon name="chevron-down" size={20} color={COLORS.text.secondary} />
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+
+                                <View style={[styles.formGroup, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: SPACING.xs }]}>
+                                    <View style={styles.labelRow}>
+                                        <Icon name="star-outline" size={18} color={COLORS.primary} />
+                                        <Text style={styles.label}>Đặt làm sản phẩm nổi bật</Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        style={[styles.checkboxButton, form.isFeatured && styles.checkboxActive]}
+                                        onPress={() => handleChange('isFeatured', !form.isFeatured as any)}
+                                    >
+                                        {form.isFeatured && <Icon name="check" size={16} color="#FFF" />}
+                                    </TouchableOpacity>
+                                </View>
+
+                                <View style={styles.formGroup}>
+                                    <View style={styles.labelRow}>
+                                        <Icon name="text-box-outline" size={18} color={COLORS.primary} />
+                                        <Text style={styles.label}>Mô tả sản phẩm</Text>
+                                    </View>
                                     <TextInput
-                                        style={[styles.input, skus.length > 0 && { backgroundColor: COLORS.divider, color: COLORS.text.muted }]}
-                                        value={form.stock}
-                                        onChangeText={(text) => handleChange('stock', text)}
-                                        placeholder="0"
-                                        keyboardType="number-pad"
-                                        editable={skus.length === 0}
+                                        style={[styles.input, styles.textArea]}
+                                        value={form.description}
+                                        onChangeText={(text) => handleChange('description', text)}
+                                        placeholder="Nhập mô tả chi tiết của sản phẩm..."
+                                        placeholderTextColor={COLORS.text.muted}
+                                        multiline
                                     />
-                                    {skus.length > 0 && (
-                                        <Text style={[styles.helperText, { color: COLORS.secondary }]}>Managed by variants</Text>
-                                    )}
                                 </View>
                             </View>
 
-                            <View style={styles.formGroup}>
-                                <Text style={styles.label}>Category *</Text>
-                                <TouchableOpacity
-                                    style={styles.dropdownButton}
-                                    onPress={() => setCategoryModalVisible(true)}
-                                >
-                                    <Text style={form.categoryName ? styles.dropdownText : styles.dropdownPlaceholder}>
-                                        {form.categoryName || 'Select a Category'}
-                                    </Text>
-                                    <Icon name="chevron-down" size={20} color={COLORS.text.secondary} />
-                                </TouchableOpacity>
-                            </View>
-
-                            <View style={styles.row}>
-                                <View style={[styles.formGroup, { flex: 1, marginRight: SPACING.xs }]}>
-                                    <Text style={styles.label}>Brand</Text>
-                                    <TouchableOpacity
-                                        style={styles.dropdownButton}
-                                        onPress={() => setBrandModalVisible(true)}
-                                    >
-                                        <Text style={form.brandName ? styles.dropdownText : styles.dropdownPlaceholder} numberOfLines={1}>
-                                            {form.brandName || 'Select Brand'}
-                                        </Text>
-                                        <Icon name="chevron-down" size={20} color={COLORS.text.secondary} />
-                                    </TouchableOpacity>
+                            <View style={styles.formCard}>
+                                <Text style={styles.cardTitle}>Giá bán & Kho hàng</Text>
+                                <Text style={styles.cardSubtitle}>Thiết lập giá và số lượng tồn kho sản phẩm</Text>
+                                <View style={styles.row}>
+                                    <View style={[styles.formGroup, { flex: 1, marginRight: SPACING.sm }]}>
+                                        <View style={styles.labelRow}>
+                                            <Icon name="currency-usd" size={18} color={COLORS.primary} />
+                                            <Text style={styles.label}>Giá bán *</Text>
+                                        </View>
+                                        <TextInput
+                                            style={styles.input}
+                                            value={form.price}
+                                            onChangeText={(text) => handleChange('price', text)}
+                                            placeholder="0.00"
+                                            placeholderTextColor={COLORS.text.muted}
+                                            keyboardType="numeric"
+                                        />
+                                    </View>
+                                    <View style={[styles.formGroup, { flex: 1, marginLeft: SPACING.sm }]}>
+                                        <View style={styles.labelRow}>
+                                            <Icon name="archive-outline" size={18} color={COLORS.primary} />
+                                            <Text style={styles.label}>Kho hàng *</Text>
+                                        </View>
+                                        <TextInput
+                                            style={[styles.input, skus.length > 0 && { backgroundColor: COLORS.divider, color: COLORS.text.muted }]}
+                                            value={form.stock}
+                                            onChangeText={(text) => handleChange('stock', text)}
+                                            placeholder="0"
+                                            placeholderTextColor={COLORS.text.muted}
+                                            keyboardType="number-pad"
+                                            editable={skus.length === 0}
+                                        />
+                                        {skus.length > 0 && (
+                                            <Text style={[styles.helperText, { color: COLORS.secondaryDark, fontWeight: '500' }]}>⚠️ Quản lý theo phân loại</Text>
+                                        )}
+                                    </View>
                                 </View>
-                                <View style={[styles.formGroup, { flex: 1, marginLeft: SPACING.xs }]}>
-                                    <Text style={styles.label}>Supplier</Text>
-                                    <TouchableOpacity
-                                        style={styles.dropdownButton}
-                                        onPress={() => setSupplierModalVisible(true)}
-                                    >
-                                        <Text style={form.supplierName ? styles.dropdownText : styles.dropdownPlaceholder} numberOfLines={1}>
-                                            {form.supplierName || 'Select Supplier'}
-                                        </Text>
-                                        <Icon name="chevron-down" size={20} color={COLORS.text.secondary} />
-                                    </TouchableOpacity>
-                                </View>
                             </View>
 
-                            <View style={[styles.formGroup, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
-                                <Text style={styles.label}>Feature this product</Text>
-                                <TouchableOpacity
-                                    style={[styles.checkboxButton, form.isFeatured && styles.checkboxActive]}
-                                    onPress={() => handleChange('isFeatured', !form.isFeatured as any)}
-                                >
-                                    {form.isFeatured && <Icon name="check" size={16} color="#FFF" />}
-                                </TouchableOpacity>
-                            </View>
-
-                            <View style={styles.formGroup}>
-                                <Text style={styles.label}>Description</Text>
-                                <TextInput
-                                    style={[styles.input, styles.textArea]}
-                                    value={form.description}
-                                    onChangeText={(text) => handleChange('description', text)}
-                                    placeholder="Product description..."
-                                    multiline
-                                />
-                            </View>
-
-                            <View style={styles.formGroup}>
-                                <Text style={styles.label}>Images (Max 5) *</Text>
+                            <View style={styles.formCard}>
+                                <Text style={styles.cardTitle}>Hình ảnh sản phẩm</Text>
+                                <Text style={styles.cardSubtitle}>Đăng tải tối đa 5 hình ảnh chất lượng cao</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagesScroll}>
                                     {/* Existing Images */}
                                     {existingImages.map((img, index) => (
                                         <View key={`existing-${index}`} style={styles.imageWrapper}>
                                             <Image source={{ uri: img }} style={styles.thumbnail} />
                                             <TouchableOpacity style={styles.removeImageBtn} onPress={() => handleRemoveExistingImage(index)}>
-                                                <Icon name="close" size={16} color="#FFF" />
+                                                <Icon name="close" size={14} color="#FFF" />
                                             </TouchableOpacity>
                                         </View>
                                     ))}
@@ -485,7 +546,7 @@ const AddEditProductScreen = () => {
                                         <View key={`new-${index}`} style={styles.imageWrapper}>
                                             <Image source={{ uri: img.uri }} style={styles.thumbnail} />
                                             <TouchableOpacity style={styles.removeImageBtn} onPress={() => handleRemoveNewImage(index)}>
-                                                <Icon name="close" size={16} color="#FFF" />
+                                                <Icon name="close" size={14} color="#FFF" />
                                             </TouchableOpacity>
                                         </View>
                                     ))}
@@ -493,8 +554,8 @@ const AddEditProductScreen = () => {
                                     {/* Add Button */}
                                     {images.length + existingImages.length < 5 && (
                                         <TouchableOpacity style={styles.addImageBtn} onPress={handlePickImage}>
-                                            <Icon name="plus" size={30} color={COLORS.primary} />
-                                            <Text style={styles.addImageText}>Upload</Text>
+                                            <Icon name="camera-plus-outline" size={26} color={COLORS.primary} />
+                                            <Text style={styles.addImageText}>Tải ảnh</Text>
                                         </TouchableOpacity>
                                     )}
                                 </ScrollView>
@@ -504,138 +565,158 @@ const AddEditProductScreen = () => {
 
                     {activeTab === 'variants' && (
                         <View style={styles.section}>
-                            {tierVariations.map((tier, tIndex) => (
-                                <View key={tIndex} style={styles.tierContainer}>
-                                    <View style={styles.tierHeader}>
-                                        <Text style={styles.label}>Variation {tIndex + 1} Name</Text>
-                                        <TouchableOpacity onPress={() => {
-                                            const newTiers = tierVariations.filter((_, i) => i !== tIndex);
-                                            setTierVariations(newTiers);
-                                        }}>
-                                            <Icon name="trash-can-outline" size={20} color={COLORS.error} />
-                                        </TouchableOpacity>
-                                    </View>
-                                    <TextInput
-                                        style={styles.input}
-                                        value={tier.name}
-                                        onChangeText={(text) => {
-                                            const newTiers = [...tierVariations];
-                                            newTiers[tIndex].name = text;
-                                            setTierVariations(newTiers);
-                                        }}
-                                        placeholder="e.g. Color, Size"
-                                    />
+                            <View style={styles.formCard}>
+                                <Text style={styles.cardTitle}>Nhóm phân loại</Text>
+                                <Text style={styles.cardSubtitle}>Thêm các nhóm phân loại (Tối đa 2 nhóm, ví dụ: Màu sắc, Kích thước)</Text>
 
-                                    <Text style={[styles.label, { marginTop: SPACING.md }]}>Options</Text>
-                                    <View style={styles.optionsContainer}>
-                                        {tier.options.map((opt, oIndex) => (
-                                            <View key={oIndex} style={styles.optionTag}>
-                                                <Text style={styles.optionTagText}>{opt}</Text>
-                                                <TouchableOpacity onPress={() => {
-                                                    const newTiers = [...tierVariations];
-                                                    newTiers[tIndex].options = newTiers[tIndex].options.filter((_, i) => i !== oIndex);
-                                                    setTierVariations(newTiers);
-                                                }}>
-                                                    <Icon name="close" size={16} color={COLORS.primaryDark} />
-                                                </TouchableOpacity>
+                                {tierVariations.map((tier, tIndex) => (
+                                    <View key={tIndex} style={styles.tierContainer}>
+                                        <View style={styles.tierHeader}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                                <Icon name="layers-outline" size={18} color={COLORS.primary} />
+                                                <Text style={styles.tierTitle}>Nhóm phân loại {tIndex + 1}</Text>
                                             </View>
-                                        ))}
-                                    </View>
-
-                                    <View style={styles.addOptionRow}>
+                                            <TouchableOpacity onPress={() => {
+                                                const newTiers = tierVariations.filter((_, i) => i !== tIndex);
+                                                setTierVariations(newTiers);
+                                            }}>
+                                                <Icon name="trash-can-outline" size={20} color={COLORS.error} />
+                                            </TouchableOpacity>
+                                        </View>
                                         <TextInput
-                                            style={[styles.input, { flex: 1, marginRight: SPACING.sm }]}
-                                            value={optionInputs[tIndex] || ''}
-                                            onChangeText={(text) => setOptionInputs(prev => ({ ...prev, [tIndex]: text }))}
-                                            placeholder="Type option (e.g. Red, XL)"
-                                            onSubmitEditing={() => {
-                                                const val = optionInputs[tIndex]?.trim();
-                                                if (val && !tier.options.includes(val)) {
-                                                    const newTiers = [...tierVariations];
-                                                    newTiers[tIndex].options.push(val);
-                                                    setTierVariations(newTiers);
-                                                    setOptionInputs(prev => ({ ...prev, [tIndex]: '' }));
-                                                }
+                                            style={styles.input}
+                                            value={tier.name}
+                                            onChangeText={(text) => {
+                                                const newTiers = [...tierVariations];
+                                                newTiers[tIndex].name = text;
+                                                setTierVariations(newTiers);
                                             }}
+                                            placeholder="Tên nhóm (ví dụ: Màu sắc, Kích cỡ)"
+                                            placeholderTextColor={COLORS.text.muted}
                                         />
-                                        <TouchableOpacity
-                                            style={styles.addOptionBtn}
-                                            onPress={() => {
-                                                const val = optionInputs[tIndex]?.trim();
-                                                if (val && !tier.options.includes(val)) {
-                                                    const newTiers = [...tierVariations];
-                                                    newTiers[tIndex].options.push(val);
-                                                    setTierVariations(newTiers);
-                                                    setOptionInputs(prev => ({ ...prev, [tIndex]: '' }));
-                                                }
-                                            }}
-                                        >
-                                            <Icon name="plus" size={24} color={COLORS.text.inverse} />
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            ))}
 
-                            {tierVariations.length < 2 && (
-                                <TouchableOpacity
-                                    style={styles.addTierBtn}
-                                    onPress={() => setTierVariations([...tierVariations, { name: '', options: [] }])}
-                                >
-                                    <Icon name="plus" size={20} color={COLORS.primary} />
-                                    <Text style={styles.addTierText}>Add Variation</Text>
-                                </TouchableOpacity>
-                            )}
-
-                            {skus.length > 0 && (
-                                <View style={styles.skusContainer}>
-                                    <Text style={styles.skusTitle}>SKU Combinations ({skus.length})</Text>
-                                    {skus.map((sku, sIndex) => {
-                                        const skuName = sku.tierIndex.map((idx: number, tierIdx: number) => tierVariations[tierIdx]?.options[idx]).join(' / ');
-                                        return (
-                                            <View key={sIndex} style={styles.skuCard}>
-                                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SPACING.sm }}>
-                                                    <Text style={styles.skuName}>{skuName}</Text>
-                                                    <TouchableOpacity onPress={() => handlePickSkuImage(sIndex)} style={styles.skuImageBtn}>
-                                                        {sku.imageAsset ? (
-                                                            <Image source={{ uri: sku.imageAsset.uri }} style={styles.skuThumbnail} />
-                                                        ) : (sku.images && sku.images[0]) ? (
-                                                            <Image source={{ uri: sku.images[0] }} style={styles.skuThumbnail} />
-                                                        ) : (
-                                                            <Icon name="camera-plus" size={20} color={COLORS.text.muted} />
-                                                        )}
+                                        <Text style={[styles.label, { marginTop: SPACING.md, fontSize: 13, color: COLORS.text.secondary }]}>Các tùy chọn:</Text>
+                                        <View style={styles.optionsContainer}>
+                                            {tier.options.map((opt, oIndex) => (
+                                                <View key={oIndex} style={styles.optionTag}>
+                                                    <Text style={styles.optionTagText}>{opt}</Text>
+                                                    <TouchableOpacity onPress={() => {
+                                                        const newTiers = [...tierVariations];
+                                                        newTiers[tIndex].options = newTiers[tIndex].options.filter((_, i) => i !== oIndex);
+                                                        setTierVariations(newTiers);
+                                                    }}>
+                                                        <Icon name="close" size={14} color={COLORS.primaryDark} />
                                                     </TouchableOpacity>
                                                 </View>
-                                                <View style={styles.skuRow}>
-                                                    <View style={styles.skuInputWrapper}>
-                                                        <Text style={styles.skuLabel}>Price ($)</Text>
-                                                        <TextInput
-                                                            style={styles.skuInput}
-                                                            value={sku.price?.toString()}
-                                                            onChangeText={(text) => {
-                                                                const newSkus = [...skus];
-                                                                newSkus[sIndex].price = Number(text);
-                                                                setSkus(newSkus);
-                                                            }}
-                                                            keyboardType="numeric"
-                                                        />
+                                            ))}
+                                        </View>
+
+                                        <View style={styles.addOptionRow}>
+                                            <TextInput
+                                                style={[styles.input, { flex: 1, marginRight: SPACING.sm }]}
+                                                value={optionInputs[tIndex] || ''}
+                                                onChangeText={(text) => setOptionInputs(prev => ({ ...prev, [tIndex]: text }))}
+                                                placeholder="Nhập giá trị tùy chọn (ví dụ: Đỏ, L) rồi nhấn thêm"
+                                                placeholderTextColor={COLORS.text.muted}
+                                                onSubmitEditing={() => {
+                                                    const val = optionInputs[tIndex]?.trim();
+                                                    if (val && !tier.options.includes(val)) {
+                                                        const newTiers = [...tierVariations];
+                                                        newTiers[tIndex].options.push(val);
+                                                        setTierVariations(newTiers);
+                                                        setOptionInputs(prev => ({ ...prev, [tIndex]: '' }));
+                                                    }
+                                                }}
+                                            />
+                                            <TouchableOpacity
+                                                style={styles.addOptionBtn}
+                                                onPress={() => {
+                                                    const val = optionInputs[tIndex]?.trim();
+                                                    if (val && !tier.options.includes(val)) {
+                                                        const newTiers = [...tierVariations];
+                                                        newTiers[tIndex].options.push(val);
+                                                        setTierVariations(newTiers);
+                                                        setOptionInputs(prev => ({ ...prev, [tIndex]: '' }));
+                                                    }
+                                                }}
+                                            >
+                                                <Icon name="plus" size={22} color={COLORS.text.inverse} />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                ))}
+
+                                {tierVariations.length < 2 && (
+                                    <TouchableOpacity
+                                        style={styles.addTierBtn}
+                                        onPress={() => setTierVariations([...tierVariations, { name: '', options: [] }])}
+                                    >
+                                        <Icon name="plus-circle-outline" size={20} color={COLORS.primary} />
+                                        <Text style={styles.addTierText}>Thêm nhóm phân loại</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+
+                            {skus.length > 0 && (
+                                <View style={styles.formCard}>
+                                    <Text style={styles.cardTitle}>Danh sách phân loại hàng</Text>
+                                    <Text style={styles.cardSubtitle}>Cập nhật giá và số lượng kho hàng riêng cho từng phân loại</Text>
+                                    <View style={styles.skusContainer}>
+                                        {skus.map((sku, sIndex) => {
+                                            const skuName = sku.tierIndex.map((idx: number, tierIdx: number) => tierVariations[tierIdx]?.options[idx]).join(' - ');
+                                            return (
+                                                <View key={sIndex} style={styles.skuCard}>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SPACING.sm }}>
+                                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                                                            <Icon name="cube-outline" size={18} color={COLORS.primary} />
+                                                            <Text style={styles.skuName} numberOfLines={1}>{skuName}</Text>
+                                                        </View>
+                                                        <TouchableOpacity onPress={() => handlePickSkuImage(sIndex)} style={styles.skuImageBtn}>
+                                                            {sku.imageAsset ? (
+                                                                <Image source={{ uri: sku.imageAsset.uri }} style={styles.skuThumbnail} />
+                                                            ) : (sku.images && sku.images[0]) ? (
+                                                                <Image source={{ uri: sku.images[0] }} style={styles.skuThumbnail} />
+                                                            ) : (
+                                                                <Icon name="camera-plus" size={18} color={COLORS.text.muted} />
+                                                            )}
+                                                        </TouchableOpacity>
                                                     </View>
-                                                    <View style={styles.skuInputWrapper}>
-                                                        <Text style={styles.skuLabel}>Stock</Text>
-                                                        <TextInput
-                                                            style={styles.skuInput}
-                                                            value={sku.stock?.toString()}
-                                                            onChangeText={(text) => {
-                                                                const newSkus = [...skus];
-                                                                newSkus[sIndex].stock = Number(text);
-                                                                setSkus(newSkus);
-                                                            }}
-                                                            keyboardType="number-pad"
-                                                        />
+                                                    <View style={styles.skuRow}>
+                                                        <View style={styles.skuInputWrapper}>
+                                                            <Text style={styles.skuLabel}>Giá bán ($)</Text>
+                                                            <TextInput
+                                                                style={styles.skuInput}
+                                                                value={sku.price?.toString()}
+                                                                onChangeText={(text) => {
+                                                                    const newSkus = [...skus];
+                                                                    newSkus[sIndex].price = Number(text);
+                                                                    setSkus(newSkus);
+                                                                }}
+                                                                keyboardType="numeric"
+                                                                placeholder="0.00"
+                                                                placeholderTextColor={COLORS.text.muted}
+                                                            />
+                                                        </View>
+                                                        <View style={styles.skuInputWrapper}>
+                                                            <Text style={styles.skuLabel}>Kho hàng</Text>
+                                                            <TextInput
+                                                                style={styles.skuInput}
+                                                                value={sku.stock?.toString()}
+                                                                onChangeText={(text) => {
+                                                                    const newSkus = [...skus];
+                                                                    newSkus[sIndex].stock = Number(text);
+                                                                    setSkus(newSkus);
+                                                                }}
+                                                                keyboardType="number-pad"
+                                                                placeholder="0"
+                                                                placeholderTextColor={COLORS.text.muted}
+                                                            />
+                                                        </View>
                                                     </View>
                                                 </View>
-                                            </View>
-                                        );
-                                    })}
+                                            );
+                                        })}
+                                    </View>
                                 </View>
                             )}
                         </View>
@@ -643,38 +724,55 @@ const AddEditProductScreen = () => {
 
                     {activeTab === 'seo' && (
                         <View style={styles.section}>
-                            <View style={styles.formGroup}>
-                                <Text style={styles.label}>Meta Title</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    value={form.metaTitle}
-                                    onChangeText={(text) => handleChange('metaTitle', text)}
-                                    placeholder="SEO Title"
-                                />
-                                <Text style={styles.helperText}>Recommended: 50-60 characters</Text>
-                            </View>
+                            <View style={styles.formCard}>
+                                <Text style={styles.cardTitle}>Tối ưu hóa SEO</Text>
+                                <Text style={styles.cardSubtitle}>Thiết lập thông tin tìm kiếm để tối ưu lượt hiển thị trên Google</Text>
 
-                            <View style={styles.formGroup}>
-                                <Text style={styles.label}>Meta Description</Text>
-                                <TextInput
-                                    style={[styles.input, styles.textArea, { height: 100 }]}
-                                    value={form.metaDescription}
-                                    onChangeText={(text) => handleChange('metaDescription', text)}
-                                    placeholder="Brief summary for search results"
-                                    multiline
-                                />
-                                <Text style={styles.helperText}>Recommended: 150-160 characters</Text>
-                            </View>
+                                <View style={styles.formGroup}>
+                                    <View style={styles.labelRow}>
+                                        <Icon name="google" size={18} color={COLORS.primary} />
+                                        <Text style={styles.label}>Tiêu đề Meta</Text>
+                                    </View>
+                                    <TextInput
+                                        style={styles.input}
+                                        value={form.metaTitle}
+                                        onChangeText={(text) => handleChange('metaTitle', text)}
+                                        placeholder="Tiêu đề SEO hiển thị trên kết quả tìm kiếm..."
+                                        placeholderTextColor={COLORS.text.muted}
+                                    />
+                                    <Text style={styles.helperText}>Khuyến nghị: 50-60 ký tự (Hiện tại: {form.metaTitle?.length || 0})</Text>
+                                </View>
 
-                            <View style={styles.formGroup}>
-                                <Text style={styles.label}>Meta Keywords</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    value={form.metaKeywords}
-                                    onChangeText={(text) => handleChange('metaKeywords', text)}
-                                    placeholder="keyword1, keyword2, keyword3"
-                                />
-                                <Text style={styles.helperText}>Comma separated list of keywords</Text>
+                                <View style={styles.formGroup}>
+                                    <View style={styles.labelRow}>
+                                        <Icon name="text-short" size={18} color={COLORS.primary} />
+                                        <Text style={styles.label}>Mô tả Meta</Text>
+                                    </View>
+                                    <TextInput
+                                        style={[styles.input, styles.textArea, { height: 100 }]}
+                                        value={form.metaDescription}
+                                        onChangeText={(text) => handleChange('metaDescription', text)}
+                                        placeholder="Tóm tắt ngắn gọn hiển thị dưới tiêu đề tìm kiếm..."
+                                        placeholderTextColor={COLORS.text.muted}
+                                        multiline
+                                    />
+                                    <Text style={styles.helperText}>Khuyến nghị: 150-160 ký tự (Hiện tại: {form.metaDescription?.length || 0})</Text>
+                                </View>
+
+                                <View style={styles.formGroup}>
+                                    <View style={styles.labelRow}>
+                                        <Icon name="key-outline" size={18} color={COLORS.primary} />
+                                        <Text style={styles.label}>Từ khóa Meta</Text>
+                                    </View>
+                                    <TextInput
+                                        style={styles.input}
+                                        value={form.metaKeywords}
+                                        onChangeText={(text) => handleChange('metaKeywords', text)}
+                                        placeholder="tu-khoa-1, tu-khoa-2, tu-khoa-3..."
+                                        placeholderTextColor={COLORS.text.muted}
+                                    />
+                                    <Text style={styles.helperText}>Danh sách các từ khóa, phân tách bằng dấu phẩy</Text>
+                                </View>
                             </View>
                         </View>
                     )}
@@ -693,7 +791,7 @@ const AddEditProductScreen = () => {
                         <ActivityIndicator color={COLORS.text.inverse} />
                     ) : (
                         <Text style={styles.submitButtonText}>
-                            {myShop?.status === 'suspended' ? 'Cửa hàng đang bị khóa' : isEdit ? 'Update Product' : 'Create Product'}
+                            {myShop?.status === 'suspended' ? 'Cửa hàng đang bị khóa' : isEdit ? 'Cập nhật sản phẩm' : 'Đăng sản phẩm mới'}
                         </Text>
                     )}
                 </TouchableOpacity>
@@ -704,23 +802,129 @@ const AddEditProductScreen = () => {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Select Category</Text>
-                            <TouchableOpacity onPress={() => setCategoryModalVisible(false)}>
+                            <Text style={styles.modalTitle}>Chọn Danh mục</Text>
+                            <TouchableOpacity onPress={() => {
+                                setCategoryModalVisible(false);
+                                setCategorySearch('');
+                                setModalCategoryPath([]);
+                            }}>
                                 <Icon name="close" size={24} color={COLORS.text.primary} />
                             </TouchableOpacity>
                         </View>
+
+                        <View style={styles.modalSearchBar}>
+                            <Icon name="magnify" size={20} color={COLORS.text.muted} />
+                            <TextInput
+                                style={styles.modalSearchInput}
+                                placeholder="Tìm danh mục..."
+                                value={categorySearch}
+                                onChangeText={setCategorySearch}
+                                placeholderTextColor={COLORS.text.muted}
+                            />
+                            {categorySearch ? (
+                                <TouchableOpacity onPress={() => setCategorySearch('')}>
+                                    <Icon name="close-circle" size={18} color={COLORS.text.muted} />
+                                </TouchableOpacity>
+                            ) : null}
+                        </View>
+
                         {isCategoriesLoading ? (
                             <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 20 }} />
-                        ) : (
+                        ) : categorySearch ? (
+                            // Search Mode: Flat list with structured main name & parent path below
                             <FlatList
-                                data={categories}
+                                data={filteredFlatCategories}
                                 keyExtractor={(item: any) => item._id || item.id}
-                                renderItem={({ item }) => (
-                                    <TouchableOpacity style={styles.categoryItem} onPress={() => handleSelectCategory(item)}>
-                                        <Text style={styles.categoryName}>{item.name}</Text>
-                                    </TouchableOpacity>
-                                )}
+                                renderItem={({ item }) => {
+                                    const parts = item.displayName.split(' ➔ ');
+                                    const parentPath = parts.slice(0, -1).join(' ➔ ');
+                                    const name = parts[parts.length - 1];
+                                    return (
+                                        <TouchableOpacity style={styles.categoryItem} onPress={() => handleSelectCategory(item)}>
+                                            <View>
+                                                <Text style={styles.categoryMainName}>{name}</Text>
+                                                {parentPath ? <Text style={styles.categoryParentPath}>{parentPath}</Text> : null}
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                }}
                             />
+                        ) : (
+                            // Drill-down hierarchy mode
+                            <View style={{ flex: 1 }}>
+                                {/* Breadcrumbs path & back action */}
+                                {modalCategoryPath.length > 0 && (
+                                    <View style={styles.breadcrumbRow}>
+                                        <TouchableOpacity 
+                                            style={styles.backButton}
+                                            onPress={() => setModalCategoryPath(modalCategoryPath.slice(0, -1))}
+                                        >
+                                            <Icon name="arrow-left" size={16} color={COLORS.primary} />
+                                            <Text style={styles.backButtonText}>Quay lại</Text>
+                                        </TouchableOpacity>
+                                        <Text style={styles.breadcrumbText} numberOfLines={1}>
+                                            {modalCategoryPath.map(c => c.name).join(' ➔ ')}
+                                        </Text>
+                                    </View>
+                                )}
+
+                                <FlatList
+                                    data={[
+                                        // Option to select current parent level category
+                                        ...(modalCategoryPath.length > 0 ? [{
+                                            _id: 'select-current',
+                                            id: 'select-current',
+                                            name: `✓ Chọn danh mục này: ${modalCategoryPath[modalCategoryPath.length - 1].name}`,
+                                            isSelectCurrentAction: true
+                                        }] : []),
+                                        // Child categories at current path level
+                                        ...(modalCategoryPath.length === 0 
+                                            ? categories 
+                                            : (modalCategoryPath[modalCategoryPath.length - 1].children || []))
+                                    ]}
+                                    keyExtractor={(item: any) => item._id || item.id}
+                                    renderItem={({ item }) => {
+                                        const hasChildren = item.children && item.children.length > 0;
+                                        const isAction = item.isSelectCurrentAction;
+                                        
+                                        return (
+                                            <TouchableOpacity 
+                                                style={[styles.categoryItem, isAction && styles.categoryItemAction]} 
+                                                onPress={() => {
+                                                    if (isAction) {
+                                                        const currentCat = modalCategoryPath[modalCategoryPath.length - 1];
+                                                        const catId = currentCat._id || currentCat.id;
+                                                        const found = flatCategories.find(c => (c._id || c.id) === catId);
+                                                        if (found) {
+                                                            handleSelectCategory(found);
+                                                        }
+                                                    } else if (hasChildren) {
+                                                        setModalCategoryPath([...modalCategoryPath, item]);
+                                                    } else {
+                                                        const catId = item._id || item.id;
+                                                        const found = flatCategories.find(c => (c._id || c.id) === catId);
+                                                        if (found) {
+                                                            handleSelectCategory(found);
+                                                        }
+                                                    }
+                                                }}
+                                            >
+                                                <View style={styles.categoryItemContent}>
+                                                    <Text style={[
+                                                        styles.categoryName, 
+                                                        isAction && { color: COLORS.primaryDark, fontWeight: '700' }
+                                                    ]}>
+                                                        {item.name}
+                                                    </Text>
+                                                    {!isAction && hasChildren && (
+                                                        <Icon name="chevron-right" size={20} color={COLORS.text.muted} />
+                                                    )}
+                                                </View>
+                                            </TouchableOpacity>
+                                        );
+                                    }}
+                                />
+                            </View>
                         )}
                     </View>
                 </View>
@@ -731,7 +935,7 @@ const AddEditProductScreen = () => {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Select Brand</Text>
+                            <Text style={styles.modalTitle}>Chọn Thương hiệu</Text>
                             <TouchableOpacity onPress={() => setBrandModalVisible(false)}>
                                 <Icon name="close" size={24} color={COLORS.text.primary} />
                             </TouchableOpacity>
@@ -749,7 +953,7 @@ const AddEditProductScreen = () => {
                                 )}
                                 ListEmptyComponent={() => (
                                     <View style={styles.emptyContainer}>
-                                        <Text style={styles.emptyText}>No brands found</Text>
+                                        <Text style={styles.emptyText}>Không tìm thấy thương hiệu nào</Text>
                                     </View>
                                 )}
                             />
@@ -763,7 +967,7 @@ const AddEditProductScreen = () => {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Select Supplier</Text>
+                            <Text style={styles.modalTitle}>Chọn Nhà cung cấp</Text>
                             <TouchableOpacity onPress={() => setSupplierModalVisible(false)}>
                                 <Icon name="close" size={24} color={COLORS.text.primary} />
                             </TouchableOpacity>
@@ -781,7 +985,7 @@ const AddEditProductScreen = () => {
                                 )}
                                 ListEmptyComponent={() => (
                                     <View style={styles.emptyContainer}>
-                                        <Text style={styles.emptyText}>No suppliers found</Text>
+                                        <Text style={styles.emptyText}>Không tìm thấy nhà cung cấp nào</Text>
                                     </View>
                                 )}
                             />
@@ -807,10 +1011,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: SPACING.md,
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
-        backgroundColor: COLORS.surface,
+        paddingVertical: SPACING.md,
+        paddingHorizontal: SPACING.md,
+        backgroundColor: '#16a34a',
     },
     headerButton: {
         padding: SPACING.xs,
@@ -818,59 +1021,95 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: FONT_SIZE.lg,
-        fontWeight: '700',
-        color: COLORS.text.primary,
+        fontWeight: 'bold',
+        color: '#FFF',
+    },
+    tabWrapper: {
+        padding: SPACING.md,
+        backgroundColor: COLORS.background,
     },
     tabContainer: {
         flexDirection: 'row',
-        backgroundColor: COLORS.surface,
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
+        backgroundColor: '#e2e8f0',
+        borderRadius: BORDER_RADIUS.lg,
+        padding: 4,
     },
     tabButton: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: SPACING.md,
-        gap: SPACING.sm,
-        borderBottomWidth: 2,
-        borderBottomColor: 'transparent',
+        paddingVertical: 10,
+        borderRadius: BORDER_RADIUS.md,
+        gap: 6,
     },
     activeTabButton: {
-        borderBottomColor: COLORS.primary,
+        backgroundColor: '#16a34a',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.15,
+        shadowRadius: 2,
     },
     tabText: {
-        fontSize: FONT_SIZE.md,
-        fontWeight: '600',
+        fontSize: 13,
+        fontWeight: '700',
         color: COLORS.text.secondary,
     },
     activeTabText: {
-        color: COLORS.primary,
+        color: '#FFF',
     },
     content: {
-        padding: SPACING.lg,
-        paddingBottom: 100, // Make room for bottom bar
+        paddingHorizontal: SPACING.md,
+        paddingBottom: 120, // space for bottomBar
     },
     section: {
-        gap: SPACING.lg,
+        gap: SPACING.md,
+    },
+    formCard: {
+        backgroundColor: COLORS.surface,
+        borderRadius: BORDER_RADIUS.lg,
+        padding: SPACING.md,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+    },
+    cardTitle: {
+        fontSize: FONT_SIZE.md,
+        fontWeight: '800',
+        color: COLORS.text.primary,
+        marginBottom: 2,
+    },
+    cardSubtitle: {
+        fontSize: FONT_SIZE.xs,
+        color: COLORS.text.secondary,
+        marginBottom: SPACING.md,
     },
     formGroup: {
-        gap: SPACING.xs,
+        gap: 6,
+        marginBottom: SPACING.md,
+    },
+    labelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
     },
     label: {
-        fontSize: FONT_SIZE.md,
-        fontWeight: '600',
+        fontSize: 13,
+        fontWeight: '700',
         color: COLORS.text.primary,
     },
     input: {
         borderWidth: 1,
         borderColor: COLORS.border,
         borderRadius: BORDER_RADIUS.md,
-        padding: SPACING.md,
+        paddingHorizontal: SPACING.md,
+        paddingVertical: 10,
         fontSize: FONT_SIZE.md,
         color: COLORS.text.primary,
-        backgroundColor: COLORS.surface,
+        backgroundColor: '#f8fafc',
     },
     dropdownButton: {
         flexDirection: 'row',
@@ -879,8 +1118,9 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: COLORS.border,
         borderRadius: BORDER_RADIUS.md,
-        padding: SPACING.md,
-        backgroundColor: COLORS.surface,
+        paddingHorizontal: SPACING.md,
+        paddingVertical: 10,
+        backgroundColor: '#f8fafc',
     },
     dropdownText: {
         fontSize: FONT_SIZE.md,
@@ -891,11 +1131,12 @@ const styles = StyleSheet.create({
         color: COLORS.text.muted,
     },
     textArea: {
-        height: 120,
+        height: 100,
         textAlignVertical: 'top',
     },
     row: {
         flexDirection: 'row',
+        marginBottom: SPACING.xs,
     },
     imagesScroll: {
         flexDirection: 'row',
@@ -918,56 +1159,60 @@ const styles = StyleSheet.create({
     },
     removeImageBtn: {
         position: 'absolute',
-        top: 2,
-        right: 2,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        top: 4,
+        right: 4,
+        backgroundColor: 'rgba(0,0,0,0.6)',
         borderRadius: BORDER_RADIUS.full,
-        padding: 2,
+        padding: 3,
+        zIndex: 10,
     },
     addImageBtn: {
         width: 80,
         height: 80,
         borderRadius: BORDER_RADIUS.md,
-        borderWidth: 1,
+        borderWidth: 1.5,
         borderColor: COLORS.primary,
         borderStyle: 'dashed',
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: COLORS.primaryLight + '20',
+        backgroundColor: 'rgba(34, 197, 94, 0.05)',
+        gap: 2,
     },
     addImageText: {
-        fontSize: FONT_SIZE.xs,
+        fontSize: 10,
+        fontWeight: '700',
         color: COLORS.primary,
-        marginTop: 4,
     },
     bottomBar: {
         position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
-        padding: SPACING.md,
+        paddingHorizontal: SPACING.md,
+        paddingVertical: SPACING.sm,
         backgroundColor: COLORS.surface,
         borderTopWidth: 1,
         borderTopColor: COLORS.border,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 5,
+        shadowOffset: { width: 0, height: -3 },
+        shadowOpacity: 0.08,
+        shadowRadius: 5,
+        elevation: 10,
     },
     submitButton: {
-        backgroundColor: COLORS.primary,
-        padding: SPACING.lg,
-        borderRadius: BORDER_RADIUS.lg,
+        backgroundColor: '#16a34a',
+        paddingVertical: 12,
+        borderRadius: BORDER_RADIUS.full,
         alignItems: 'center',
     },
     disabledButton: {
-        opacity: 0.7,
+        opacity: 0.5,
+        backgroundColor: COLORS.text.muted,
     },
     submitButtonText: {
-        color: COLORS.text.inverse,
-        fontSize: FONT_SIZE.lg,
-        fontWeight: '700',
+        color: '#FFF',
+        fontSize: FONT_SIZE.md,
+        fontWeight: 'bold',
     },
     modalOverlay: {
         flex: 1,
@@ -978,8 +1223,8 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.surface,
         borderTopLeftRadius: BORDER_RADIUS.xl,
         borderTopRightRadius: BORDER_RADIUS.xl,
-        height: '70%',
-        padding: SPACING.lg,
+        height: '65%',
+        padding: SPACING.md,
     },
     modalHeader: {
         flexDirection: 'row',
@@ -992,20 +1237,20 @@ const styles = StyleSheet.create({
     },
     modalTitle: {
         fontSize: FONT_SIZE.lg,
-        fontWeight: '700',
+        fontWeight: 'bold',
         color: COLORS.text.primary,
     },
     categoryItem: {
         paddingVertical: SPACING.md,
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
+        borderBottomColor: COLORS.divider,
     },
     categoryName: {
         fontSize: FONT_SIZE.md,
         color: COLORS.text.primary,
     },
     tierContainer: {
-        backgroundColor: COLORS.surface,
+        backgroundColor: '#f8fafc',
         borderWidth: 1,
         borderColor: COLORS.border,
         borderRadius: BORDER_RADIUS.md,
@@ -1016,37 +1261,42 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: SPACING.xs,
+        marginBottom: SPACING.sm,
+    },
+    tierTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: COLORS.text.primary,
     },
     optionsContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: SPACING.sm,
+        gap: 6,
         marginTop: SPACING.xs,
-        marginBottom: SPACING.sm,
+        marginBottom: SPACING.md,
     },
     optionTag: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: COLORS.primaryLight + '40',
+        backgroundColor: 'rgba(34, 197, 94, 0.12)',
         paddingHorizontal: SPACING.sm,
-        paddingVertical: 4,
-        borderRadius: BORDER_RADIUS.sm,
+        paddingVertical: 5,
+        borderRadius: BORDER_RADIUS.md,
         gap: 4,
     },
     optionTagText: {
-        fontSize: FONT_SIZE.md,
+        fontSize: 12,
         color: COLORS.primaryDark,
-        fontWeight: '500',
+        fontWeight: '700',
     },
     addOptionRow: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     addOptionBtn: {
-        backgroundColor: COLORS.primary,
-        width: 44,
-        height: 44,
+        backgroundColor: '#16a34a',
+        width: 42,
+        height: 42,
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: BORDER_RADIUS.md,
@@ -1054,75 +1304,79 @@ const styles = StyleSheet.create({
     addTierBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: SPACING.sm,
+        justifyContent: 'center',
+        paddingVertical: 10,
+        borderWidth: 1,
+        borderColor: COLORS.primary,
+        borderStyle: 'dashed',
+        borderRadius: BORDER_RADIUS.md,
+        marginTop: SPACING.sm,
+        gap: 6,
     },
     addTierText: {
-        fontSize: FONT_SIZE.md,
+        fontSize: 13,
         color: COLORS.primary,
-        fontWeight: '600',
-        marginLeft: SPACING.xs,
+        fontWeight: '700',
     },
     skusContainer: {
-        marginTop: SPACING.lg,
-    },
-    skusTitle: {
-        fontSize: FONT_SIZE.md,
-        fontWeight: '700',
-        color: COLORS.text.primary,
-        marginBottom: SPACING.md,
+        marginTop: SPACING.sm,
+        gap: SPACING.sm,
     },
     skuCard: {
-        backgroundColor: COLORS.surface,
+        backgroundColor: '#f8fafc',
         borderWidth: 1,
         borderColor: COLORS.border,
-        borderRadius: BORDER_RADIUS.sm,
+        borderRadius: BORDER_RADIUS.md,
         padding: SPACING.md,
-        marginBottom: SPACING.sm,
     },
     skuName: {
-        fontSize: FONT_SIZE.md,
-        fontWeight: '600',
+        fontSize: 13,
+        fontWeight: '700',
         color: COLORS.text.primary,
         flex: 1,
     },
     skuRow: {
         flexDirection: 'row',
-        gap: SPACING.md,
+        gap: SPACING.sm,
     },
     skuInputWrapper: {
         flex: 1,
     },
     skuLabel: {
-        fontSize: FONT_SIZE.sm,
+        fontSize: 11,
+        fontWeight: '600',
         color: COLORS.text.secondary,
         marginBottom: 4,
     },
     skuInput: {
         borderWidth: 1,
         borderColor: COLORS.border,
-        borderRadius: BORDER_RADIUS.sm,
-        padding: SPACING.sm,
-        fontSize: FONT_SIZE.md,
-        backgroundColor: COLORS.background,
+        borderRadius: BORDER_RADIUS.md,
+        paddingHorizontal: SPACING.sm,
+        paddingVertical: 6,
+        fontSize: 13,
+        color: COLORS.text.primary,
+        backgroundColor: COLORS.surface,
     },
     checkboxButton: {
-        width: 24,
-        height: 24,
-        borderRadius: 4,
+        width: 22,
+        height: 22,
+        borderRadius: 6,
         borderWidth: 2,
         borderColor: COLORS.border,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: COLORS.surface,
     },
     checkboxActive: {
-        backgroundColor: COLORS.primary,
-        borderColor: COLORS.primary,
+        backgroundColor: '#16a34a',
+        borderColor: '#16a34a',
     },
     skuImageBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: BORDER_RADIUS.sm,
-        backgroundColor: COLORS.background,
+        width: 38,
+        height: 38,
+        borderRadius: BORDER_RADIUS.md,
+        backgroundColor: COLORS.surface,
         borderWidth: 1,
         borderColor: COLORS.border,
         justifyContent: 'center',
@@ -1135,7 +1389,7 @@ const styles = StyleSheet.create({
         resizeMode: 'cover',
     },
     helperText: {
-        fontSize: FONT_SIZE.xs,
+        fontSize: 11,
         color: COLORS.text.secondary,
         marginTop: 2,
     },
@@ -1145,6 +1399,76 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         fontSize: FONT_SIZE.md,
+        color: COLORS.text.secondary,
+    },
+    modalSearchBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f1f5f9',
+        borderRadius: BORDER_RADIUS.md,
+        paddingHorizontal: SPACING.sm,
+        marginBottom: SPACING.md,
+        gap: 4,
+    },
+    modalSearchInput: {
+        flex: 1,
+        paddingVertical: 8,
+        paddingHorizontal: 6,
+        fontSize: 14,
+        color: COLORS.text.primary,
+    },
+    breadcrumbRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f1f5f9',
+        paddingVertical: 8,
+        paddingHorizontal: SPACING.sm,
+        borderRadius: BORDER_RADIUS.md,
+        marginBottom: SPACING.md,
+    },
+    backButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginRight: SPACING.sm,
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        backgroundColor: COLORS.surface,
+        borderRadius: BORDER_RADIUS.sm,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    backButtonText: {
+        fontSize: 12,
+        color: COLORS.primaryDark,
+        fontWeight: '700',
+        marginLeft: 2,
+    },
+    breadcrumbText: {
+        flex: 1,
+        fontSize: 12,
+        color: COLORS.text.secondary,
+        fontWeight: '600',
+    },
+    categoryItemAction: {
+        backgroundColor: 'rgba(34, 197, 94, 0.05)',
+        borderLeftWidth: 3,
+        borderLeftColor: COLORS.primary,
+        paddingLeft: SPACING.sm - 3,
+    },
+    categoryItemContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        width: '100%',
+    },
+    categoryMainName: {
+        fontSize: FONT_SIZE.md,
+        fontWeight: '600',
+        color: COLORS.text.primary,
+        marginBottom: 2,
+    },
+    categoryParentPath: {
+        fontSize: 11,
         color: COLORS.text.secondary,
     },
 });
