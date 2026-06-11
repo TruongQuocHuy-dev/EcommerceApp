@@ -11,6 +11,7 @@ import {
     Image,
     Animated,
     Dimensions,
+    StatusBar,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -26,12 +27,6 @@ type SellerProductsNavigationProp = NativeStackNavigationProp<RootStackParamList
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = (SCREEN_WIDTH - SPACING.md * 3) / 2;
-
-const FILTER_TABS = [
-    { key: 'all', label: 'Tất cả', icon: 'view-grid-outline' },
-    { key: 'active', label: 'Đang bán', icon: 'check-circle-outline' },
-    { key: 'low_stock', label: 'Sắp hết', icon: 'alert-outline' },
-];
 
 const ProductCard = ({
     item,
@@ -49,7 +44,9 @@ const ProductCard = ({
     const handlePressOut = () =>
         Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 50 }).start();
 
-    const isLowStock = item.stock <= 5;
+    const isOutOfStock = item.stock === 0;
+    const isLowStock = item.stock > 0 && item.stock <= 5;
+    const isInactive = item.isActive === false;
     const thumbnail = item.images?.[0];
 
     return (
@@ -69,31 +66,44 @@ const ProductCard = ({
                             <Icon name="image-outline" size={32} color={COLORS.text.muted} />
                         </View>
                     )}
-                    {isLowStock && (
-                        <View style={styles.lowStockBadge}>
-                            <Text style={styles.lowStockText}>
-                                {item.stock === 0 ? 'Hết hàng' : `Còn ${item.stock}`}
-                            </Text>
+                    {isInactive ? (
+                        <View style={[styles.stockBadge, styles.inactiveBadge]}>
+                            <Text style={styles.badgeText}>Đang ẩn</Text>
                         </View>
-                    )}
+                    ) : isOutOfStock ? (
+                        <View style={[styles.stockBadge, styles.outOfStockBadge]}>
+                            <Text style={styles.badgeText}>Hết hàng</Text>
+                        </View>
+                    ) : isLowStock ? (
+                        <View style={[styles.stockBadge, styles.lowStockBadge]}>
+                            <Text style={styles.badgeText}>{`Còn ${item.stock}`}</Text>
+                        </View>
+                    ) : null}
                 </View>
 
                 <View style={styles.productInfo}>
                     <Text style={styles.productName} numberOfLines={1}>
                         {item.name}
                     </Text>
-                    <Text style={styles.productPrice}>${Number(item.price).toLocaleString()}</Text>
-                    <Text style={[styles.productStock, isLowStock && { color: COLORS.error }]}>
+                    <Text style={styles.productPrice}>{Number(item.price).toLocaleString()}đ</Text>
+                    <Text style={[styles.productStock, isOutOfStock && { color: COLORS.error }]}>
                         Kho: {item.stock}
                     </Text>
                 </View>
 
                 <View style={styles.cardActions}>
-                    <TouchableOpacity onPress={() => onEdit(item._id || item.id)}>
-                        <Icon name="pencil-outline" size={18} color={COLORS.primary} />
+                    <TouchableOpacity 
+                        style={styles.actionBtnEdit}
+                        onPress={() => onEdit(item._id || item.id)}
+                    >
+                        <Icon name="pencil" size={14} color="#16a34a" />
+                        <Text style={styles.actionBtnEditText}>Sửa</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => onDelete(item._id || item.id)}>
-                        <Icon name="delete-outline" size={18} color={COLORS.error} />
+                    <TouchableOpacity 
+                        style={styles.actionBtnDelete}
+                        onPress={() => onDelete(item._id || item.id)}
+                    >
+                        <Icon name="trash-can-outline" size={16} color={COLORS.error} />
                     </TouchableOpacity>
                 </View>
             </TouchableOpacity>
@@ -120,6 +130,16 @@ const SellerProductsScreen = () => {
     useEffect(() => {
         loadSellerProducts();
     }, [loadSellerProducts]);
+
+    const countAll = products.length;
+    const countActive = products.filter((p: any) => p.isActive !== false).length;
+    const countLowStock = products.filter((p: any) => p.stock <= 5).length;
+
+    const filterTabs = [
+        { key: 'all', label: `Tất cả (${countAll})`, icon: 'view-grid-outline' },
+        { key: 'active', label: `Đang bán (${countActive})`, icon: 'check-circle-outline' },
+        { key: 'low_stock', label: `Sắp hết (${countLowStock})`, icon: 'alert-outline' },
+    ];
 
     const filteredProducts = products.filter((p: any) => {
         const matchesSearch = p.name?.toLowerCase().includes(search.toLowerCase());
@@ -155,18 +175,18 @@ const SellerProductsScreen = () => {
 
     const renderHeader = () => (
         <View style={styles.header}>
-            <Text style={styles.title}>Sản phẩm của tôi</Text>
             <View style={styles.searchBar}>
                 <Icon name="magnify" size={20} color={COLORS.text.muted} />
                 <TextInput
                     style={styles.searchInput}
-                    placeholder="Tìm sản phẩm..."
+                    placeholder="Tìm kiếm sản phẩm..."
                     value={search}
                     onChangeText={setSearch}
+                    placeholderTextColor={COLORS.text.muted}
                 />
             </View>
             <View style={styles.filterContainer}>
-                {FILTER_TABS.map((tab) => (
+                {filterTabs.map((tab) => (
                     <TouchableOpacity
                         key={tab.key}
                         style={[
@@ -177,7 +197,7 @@ const SellerProductsScreen = () => {
                     >
                         <Icon 
                             name={tab.icon} 
-                            size={16} 
+                            size={14} 
                             color={activeFilter === tab.key ? '#fff' : COLORS.text.secondary} 
                         />
                         <Text style={[
@@ -215,7 +235,18 @@ const SellerProductsScreen = () => {
     };
 
     return (
-        <View style={[styles.container, { paddingTop: insets.top }]}>
+        <SafeAreaView style={styles.container} edges={['top']}>
+            <StatusBar barStyle="light-content" backgroundColor="#16a34a" />
+            
+            {/* Custom Header Bar */}
+            <View style={styles.headerBar}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBackButton}>
+                    <Icon name="arrow-left" size={24} color="#fff" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Sản phẩm của tôi</Text>
+                <View style={{ width: 40 }} />
+            </View>
+
             <FlatList
                 data={groupProducts()}
                 keyExtractor={(_, i) => String(i)}
@@ -242,69 +273,211 @@ const SellerProductsScreen = () => {
             >
                 <Icon name="plus" size={30} color="#fff" />
             </TouchableOpacity>
-        </View>
+        </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: COLORS.background },
-    header: { padding: SPACING.md, backgroundColor: COLORS.surface },
-    title: { fontSize: FONT_SIZE.xxl, fontWeight: '700', color: COLORS.text.primary, marginBottom: SPACING.md },
+    container: { 
+        flex: 1, 
+        backgroundColor: COLORS.background 
+    },
+    headerBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: SPACING.md,
+        paddingHorizontal: SPACING.md,
+        backgroundColor: '#16a34a',
+    },
+    headerBackButton: {
+        padding: SPACING.xs,
+    },
+    headerTitle: {
+        fontSize: FONT_SIZE.lg,
+        fontWeight: 'bold',
+        color: '#fff',
+    },
+    header: { 
+        padding: SPACING.md, 
+        backgroundColor: COLORS.background 
+    },
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#f1f5f9',
+        backgroundColor: COLORS.surface,
         borderRadius: BORDER_RADIUS.md,
         paddingHorizontal: SPACING.sm,
         marginBottom: SPACING.md,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.03,
+        shadowRadius: 2,
     },
-    searchInput: { flex: 1, paddingVertical: 10, paddingHorizontal: 10, fontSize: FONT_SIZE.md },
-    filterContainer: { flexDirection: 'row', gap: SPACING.sm },
+    searchInput: { 
+        flex: 1, 
+        paddingVertical: 10, 
+        paddingHorizontal: 10, 
+        fontSize: FONT_SIZE.md,
+        color: COLORS.text.primary,
+    },
+    filterContainer: { 
+        flexDirection: 'row', 
+        gap: SPACING.xs,
+    },
     filterTab: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: SPACING.md,
+        paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: BORDER_RADIUS.full,
-        backgroundColor: '#f1f5f9',
-        gap: 6,
-    },
-    filterTabActive: { backgroundColor: COLORS.primary },
-    filterTabText: { fontSize: FONT_SIZE.xs, color: COLORS.text.secondary, fontWeight: '600' },
-    filterTabTextActive: { color: '#fff' },
-    listContent: { paddingBottom: 100 },
-    row: { flexDirection: 'row', paddingHorizontal: SPACING.md, gap: SPACING.md, marginBottom: SPACING.md },
-    productCard: {
         backgroundColor: COLORS.surface,
-        borderRadius: BORDER_RADIUS.lg,
-        overflow: 'hidden',
         borderWidth: 1,
         borderColor: COLORS.border,
+        gap: 4,
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.03,
+        shadowRadius: 2,
     },
-    imageContainer: { width: '100%', height: CARD_WIDTH * 0.8, position: 'relative' },
-    image: { width: '100%', height: '100%' },
-    imagePlaceholder: { width: '100%', height: '100%', backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' },
-    lowStockBadge: {
+    filterTabActive: { 
+        backgroundColor: '#16a34a',
+        borderColor: '#16a34a',
+    },
+    filterTabText: { 
+        fontSize: 11, 
+        color: COLORS.text.secondary, 
+        fontWeight: '700' 
+    },
+    filterTabTextActive: { 
+        color: '#fff' 
+    },
+    listContent: { 
+        paddingBottom: 100 
+    },
+    row: { 
+        flexDirection: 'row', 
+        paddingHorizontal: SPACING.md, 
+        gap: SPACING.md, 
+        marginBottom: SPACING.md 
+    },
+    productCard: {
+        backgroundColor: COLORS.surface,
+        borderRadius: 16,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#f1f5f9',
+        shadowColor: '#0f172a',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
+    },
+    imageContainer: { 
+        width: '100%', 
+        height: CARD_WIDTH * 0.8, 
+        position: 'relative',
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        overflow: 'hidden',
+    },
+    image: { 
+        width: '100%', 
+        height: '100%' 
+    },
+    imagePlaceholder: { 
+        width: '100%', 
+        height: '100%', 
+        backgroundColor: '#f1f5f9', 
+        alignItems: 'center', 
+        justifyContent: 'center' 
+    },
+    stockBadge: {
         position: 'absolute',
-        top: 8,
-        left: 8,
-        backgroundColor: COLORS.error,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: BORDER_RADIUS.sm,
+        top: 0,
+        left: 0,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderTopLeftRadius: 16,
+        borderBottomRightRadius: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 1.5,
+        elevation: 1,
     },
-    lowStockText: { color: '#fff', fontSize: 10, fontWeight: '700' },
-    productInfo: { padding: SPACING.sm },
-    productName: { fontSize: FONT_SIZE.sm, fontWeight: '600', color: COLORS.text.primary, marginBottom: 2 },
-    productPrice: { fontSize: FONT_SIZE.md, fontWeight: '700', color: COLORS.primary },
-    productStock: { fontSize: FONT_SIZE.xs, color: COLORS.text.muted, marginTop: 2 },
+    outOfStockBadge: {
+        backgroundColor: COLORS.error,
+    },
+    lowStockBadge: {
+        backgroundColor: '#f97316',
+    },
+    inactiveBadge: {
+        backgroundColor: '#64748b',
+    },
+    badgeText: { 
+        color: '#fff', 
+        fontSize: 9.5, 
+        fontWeight: '800' 
+    },
+    productInfo: { 
+        padding: 12,
+        gap: 5,
+    },
+    productName: { 
+        fontSize: 13, 
+        fontWeight: '600', 
+        color: '#1e293b', 
+        lineHeight: 18,
+        marginBottom: 2 
+    },
+    productPrice: { 
+        fontSize: 15, 
+        fontWeight: '800', 
+        color: '#16a34a' 
+    },
+    productStock: { 
+        fontSize: 11, 
+        color: '#64748b', 
+        marginTop: 2 
+    },
     cardActions: {
         flexDirection: 'row',
-        justifyContent: 'flex-end',
-        gap: SPACING.md,
-        padding: SPACING.sm,
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingBottom: 12,
+        paddingTop: 8,
         borderTopWidth: 1,
-        borderTopColor: COLORS.border,
+        borderTopColor: '#f1f5f9',
+        gap: SPACING.sm,
+    },
+    actionBtnEdit: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f0fdf4',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+        gap: 4,
+        flex: 1,
+        justifyContent: 'center',
+    },
+    actionBtnEditText: {
+        fontSize: 12,
+        color: '#16a34a',
+        fontWeight: '700',
+    },
+    actionBtnDelete: {
+        backgroundColor: '#fef2f2',
+        padding: 6,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     fab: {
         position: 'absolute',
@@ -312,7 +485,7 @@ const styles = StyleSheet.create({
         width: 56,
         height: 56,
         borderRadius: 28,
-        backgroundColor: COLORS.primary,
+        backgroundColor: '#16a34a',
         alignItems: 'center',
         justifyContent: 'center',
         elevation: 5,
@@ -321,8 +494,15 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
     },
-    empty: { alignItems: 'center', paddingVertical: 100 },
-    emptyText: { marginTop: SPACING.md, fontSize: FONT_SIZE.md, color: COLORS.text.muted },
+    empty: { 
+        alignItems: 'center', 
+        paddingVertical: 100 
+    },
+    emptyText: { 
+        marginTop: SPACING.md, 
+        fontSize: FONT_SIZE.md, 
+        color: COLORS.text.muted 
+    },
 });
 
 export default SellerProductsScreen;
