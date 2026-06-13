@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -22,6 +22,7 @@ import { fetchOrders } from '../../store/orderSlice';
 import { fetchMyShop } from '../../store/shopSlice';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
+import api from '../../api/client';
 
 type SellerDashboardNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -103,13 +104,32 @@ const SellerDashboard = () => {
     const { orders, pagination, isLoading: ordersLoading } = useAppSelector((state) => state.order);
     const { myShop } = useAppSelector((state) => state.shop);
 
+    const [overviewData, setOverviewData] = useState<any>(null);
+    const [isLoadingOverview, setIsLoadingOverview] = useState(false);
+
+    const fetchOverview = useCallback(async () => {
+        if (!user?.id) return;
+        setIsLoadingOverview(true);
+        try {
+            const res = await api.get('/analytics/seller/overview');
+            if (res.data?.success) {
+                setOverviewData(res.data.data);
+            }
+        } catch (error) {
+            console.error('Error fetching seller overview:', error);
+        } finally {
+            setIsLoadingOverview(false);
+        }
+    }, [user?.id]);
+
     const loadData = useCallback(() => {
         if (user?.id) {
             dispatch(fetchProducts({ seller: user.id }));
             dispatch(fetchOrders({ asSeller: true, limit: 10 }));
             dispatch(fetchMyShop());
+            fetchOverview();
         }
-    }, [dispatch, user?.id]);
+    }, [dispatch, user?.id, fetchOverview]);
 
     const isFocused = useIsFocused();
 
@@ -139,9 +159,9 @@ const SellerDashboard = () => {
     }, [myShop?.status, myShop?.suspensionReason]);
 
     // Computed Stats
-    const totalRevenue = products.reduce((sum: number, p: any) => sum + (p.price || 0) * (p.sold || 0), 0);
+    const totalRevenue = overviewData ? overviewData.totalRevenue : products.reduce((sum: number, p: any) => sum + (p.price || 0) * (p.sold || 0), 0);
     const lowStockProducts = products.filter((p: any) => p.stock <= 5);
-    const pendingOrders = orders.filter((o: any) => o.status === 'pending');
+    const pendingCount = overviewData ? overviewData.pendingOrders : orders.filter((o: any) => o.status === 'pending').length;
     
     const isCompletelyEmpty = products.length === 0 && orders.length === 0 && !productsLoading && !ordersLoading;
     const recentOrders = orders.slice(0, 5); // Take top 5 recent orders
@@ -171,7 +191,7 @@ const SellerDashboard = () => {
         <SafeAreaView style={styles.container} edges={['top']}>
             <StatusBar barStyle="light-content" backgroundColor="#16a34a" />
             <ScrollView
-                refreshControl={<RefreshControl refreshing={productsLoading || ordersLoading} onRefresh={loadData} />}
+                refreshControl={<RefreshControl refreshing={productsLoading || ordersLoading || isLoadingOverview} onRefresh={loadData} />}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
             >
@@ -193,15 +213,16 @@ const SellerDashboard = () => {
                     <View style={styles.mainStats}>
                         <View style={styles.revenueBox}>
                             <View style={styles.revenueHeader}>
-                                <Text style={styles.revenueLabel}>Doanh thu ước tính</Text>
+                                <Text style={styles.revenueLabel}>Doanh thu thực tế</Text>
                                 <View style={styles.badgeContext}>
-                                    <Text style={styles.badgeContextText}>Trong 30 ngày qua</Text>
+                                    <Text style={styles.badgeContextText}>Đã hoàn thành</Text>
                                 </View>
                             </View>
-                            <Text style={styles.revenueValue}>${totalRevenue.toLocaleString()}</Text>
-                            {totalRevenue > 0 && (
+                            <Text style={styles.revenueValue}>{totalRevenue.toLocaleString()}đ</Text>
+                            {overviewData && overviewData.revenueGrowth !== undefined && (
                                 <Text style={styles.revenueTrend}>
-                                    <Icon name="trending-up" size={14} color="#a7f3d0" /> Tăng trưởng ổn định
+                                    <Icon name={overviewData.revenueGrowth >= 0 ? "trending-up" : "trending-down"} size={14} color="#a7f3d0" />{' '}
+                                    {overviewData.revenueGrowth >= 0 ? '+' : ''}{overviewData.revenueGrowth.toFixed(1)}% so với tháng trước
                                 </Text>
                             )}
                         </View>
@@ -209,7 +230,7 @@ const SellerDashboard = () => {
                             <StatCard
                                 icon="package-variant"
                                 label="Sản phẩm"
-                                value={products.length}
+                                value={overviewData ? overviewData.totalProducts : products.length}
                                 color="#3b82f6"
                                 bg="#dbeafe"
                                 delay={100}
@@ -217,7 +238,7 @@ const SellerDashboard = () => {
                             <StatCard
                                 icon="cart-outline"
                                 label="Đơn hàng"
-                                value={pagination?.totalItems || 0}
+                                value={overviewData ? overviewData.totalOrders : (pagination?.totalItems || 0)}
                                 color="#10b981"
                                 bg="#d1fae5"
                                 delay={200}
@@ -279,15 +300,15 @@ const SellerDashboard = () => {
                     )}
 
                     {/* Alerts Section (Only show if there are issues) */}
-                    {(lowStockProducts.length > 0 || pendingOrders.length > 0) && (
+                    {(lowStockProducts.length > 0 || pendingCount > 0) && (
                         <View style={styles.section}>
                             <View style={styles.sectionHeader}>
                                 <Text style={styles.sectionTitle}>⚠️ Cần chú ý</Text>
                             </View>
-                            {pendingOrders.length > 0 && (
+                            {pendingCount > 0 && (
                                 <AlertItem
                                     icon="bell-ring"
-                                    title={`${pendingOrders.length} Đơn hàng chờ xác nhận`}
+                                    title={`${pendingCount} Đơn hàng chờ xác nhận`}
                                     desc="Xử lý ngay để đảm bảo tiến độ giao hàng."
                                     type="error" // Make it red to grab attention
                                 />
@@ -296,7 +317,7 @@ const SellerDashboard = () => {
                                 <AlertItem
                                     icon="alert"
                                     title={`${lowStockProducts.length} Sản phẩm sắp hết hàng`}
-                                    desc="Bổ sung tồn kho để không lỡ nhịp bán."
+                                    desc="Hãy cập nhật tồn kho để tránh mất đơn."
                                     type="warning"
                                 />
                             )}
@@ -315,16 +336,13 @@ const SellerDashboard = () => {
                                     <View style={[styles.shortcutIcon, { backgroundColor: '#fef3c7' }]}>
                                         <Icon name="clipboard-list-outline" size={28} color="#f59e0b" />
                                     </View>
-                                    {pendingOrders.length > 0 && (
+                                    {pendingCount > 0 && (
                                         <View style={styles.shortcutBadge}>
-                                            <Text style={styles.shortcutBadgeText}>{pendingOrders.length}</Text>
+                                            <Text style={styles.shortcutBadgeText}>{pendingCount}</Text>
                                         </View>
                                     )}
                                 </View>
                                 <Text style={styles.shortcutText}>Đơn hàng</Text>
-                                {pendingOrders.length > 0 && (
-                                    <Text style={styles.shortcutHint}>{pendingOrders.length} đơn mới</Text>
-                                )}
                             </TouchableOpacity>
 
                             <TouchableOpacity 
@@ -350,6 +368,19 @@ const SellerDashboard = () => {
                                     </View>
                                 </View>
                                 <Text style={styles.shortcutText}>Khuyến mãi</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                style={[styles.shortcutItem, myShop?.status === 'suspended' && { opacity: 0.5 }]}
+                                onPress={() => navigation.navigate('SellerReports' as any)}
+                                disabled={myShop?.status === 'suspended'}
+                            >
+                                <View style={styles.iconContainer}>
+                                    <View style={[styles.shortcutIcon, { backgroundColor: '#ede9fe' }]}>
+                                        <Icon name="chart-bar" size={28} color="#8b5cf6" />
+                                    </View>
+                                </View>
+                                <Text style={styles.shortcutText}>Báo cáo</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -487,7 +518,7 @@ const styles = StyleSheet.create({
     
     // Shortcuts
     shortcutGrid: { flexDirection: 'row', justifyContent: 'space-between' },
-    shortcutItem: { alignItems: 'center', width: '30%' },
+    shortcutItem: { alignItems: 'center', width: '22%' },
     iconContainer: { position: 'relative' },
     shortcutIcon: { width: 60, height: 60, borderRadius: BORDER_RADIUS.xl, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
     shortcutBadge: {

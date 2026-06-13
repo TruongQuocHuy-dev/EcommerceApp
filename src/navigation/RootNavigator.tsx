@@ -23,6 +23,7 @@ import OrdersScreen from '../screens/buyer/OrdersScreen';
 import SellerDashboard from '../screens/seller/SellerDashboard';
 import SellerOrdersScreen from '../screens/seller/SellerOrdersScreen';
 import SellerVouchersScreen from '../screens/seller/SellerVouchersScreen';
+import SellerReportsScreen from '../screens/seller/SellerReportsScreen';
 import SellerRegistrationScreen from '../screens/profile/SellerRegistrationScreen';
 import ShopDetailScreen from '../screens/buyer/ShopDetailScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
@@ -139,6 +140,11 @@ const RootNavigator = () => {
                         <Stack.Screen
                             name="SellerVouchers"
                             component={SellerVouchersScreen}
+                            options={{ headerShown: false }}
+                        />
+                        <Stack.Screen
+                            name="SellerReports"
+                            component={SellerReportsScreen}
                             options={{ headerShown: false }}
                         />
                         <Stack.Screen

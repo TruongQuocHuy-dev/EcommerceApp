@@ -162,7 +162,7 @@ const SellerProfileScreen = () => {
                             icon="chart-line" 
                             label="Phân tích & Báo cáo" 
                             color="#ec4899" 
-                            onPress={() => {}} 
+                            onPress={() => navigation.navigate('SellerReports')} 
                         />
                         <SettingItem 
                             icon="bullhorn-outline" 

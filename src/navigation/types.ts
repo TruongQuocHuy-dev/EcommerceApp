@@ -40,6 +40,7 @@ export type RootStackParamList = {
     SellerDashboard: undefined;
     SellerOrders: undefined;
     SellerVouchers: undefined;
+    SellerReports: undefined;
     SellerRegistration: undefined;
     ShopDetail: { shopId: string };
     EditProfile: undefined;
